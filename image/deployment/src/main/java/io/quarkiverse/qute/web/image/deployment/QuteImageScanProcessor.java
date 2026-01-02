@@ -15,10 +15,9 @@ import java.util.stream.Collectors;
 import io.quarkiverse.qute.web.image.deployment.items.QuteImageTargetDirBuildItem;
 import io.quarkiverse.qute.web.image.deployment.items.QuteImageTemplateToScanBuildItem;
 import io.quarkiverse.qute.web.image.deployment.items.QuteImageTemplateToScanBuildItem.ImageTagSection;
-import io.quarkiverse.qute.web.image.runtime.DefaultPresetConfig;
 import io.quarkiverse.qute.web.image.runtime.ImageConfig;
 import io.quarkiverse.qute.web.image.runtime.PresetConfig;
-import io.quarkiverse.qute.web.image.spi.items.ImageSourceDirBuildItem;
+import io.quarkiverse.qute.web.image.spi.items.ImagesDirBuildItem;
 import io.quarkiverse.qute.web.image.spi.items.WhitelistDirBuildItem;
 import io.quarkus.bootstrap.workspace.WorkspaceModule;
 import io.quarkus.deployment.annotations.BuildProducer;
@@ -40,27 +39,29 @@ public class QuteImageScanProcessor {
     public static final String TARGET_DIR_NAME = "qute-image/";
 
     @BuildStep
-    void initBuildDirs(CurateOutcomeBuildItem curateOutcome, List<ImageSourceDirBuildItem> imageSourceDirs,
-            BuildProducer<WhitelistDirBuildItem> whitelistDirs) {
-
+    void initWhitelist(CurateOutcomeBuildItem curateOutcome, List<ImagesDirBuildItem> imagesDirs,
+                       BuildProducer<WhitelistDirBuildItem> whitelistDirs) {
+        // Add all src from the app module
         Set<Path> outputPaths = new HashSet<>();
         outputPaths
                 .addAll(curateOutcome.getApplicationModel().getApplicationModule().getMainSources().getOutputTree().getRoots());
         outputPaths
                 .addAll(curateOutcome.getApplicationModel().getApplicationModule().getTestSources().getOutputTree().getRoots());
+        // Add all target dirs from other modules
         for (WorkspaceModule workspaceModule : curateOutcome.getApplicationModel().getWorkspaceModules()) {
             outputPaths.addAll(workspaceModule.getMainSources().getOutputTree().getRoots());
         }
-        outputPaths.forEach(path -> addBuildDirIfExists(whitelistDirs, path));
+        outputPaths.forEach(path -> addDirIfExists(whitelistDirs, path));
 
-        for (ImageSourceDirBuildItem dir : imageSourceDirs) {
+        // Add all provided images dir
+        for (ImagesDirBuildItem dir : imagesDirs) {
             if (!dir.isResource()) {
-                addBuildDirIfExists(whitelistDirs, dir.basePath());
+                addDirIfExists(whitelistDirs, dir.basePath());
             }
         }
     }
 
-    private static void addBuildDirIfExists(BuildProducer<WhitelistDirBuildItem> whitelistDirs, Path buildDir) {
+    private static void addDirIfExists(BuildProducer<WhitelistDirBuildItem> whitelistDirs, Path buildDir) {
         if (buildDir != null && Files.isDirectory(buildDir)) {
             whitelistDirs.produce(new WhitelistDirBuildItem(buildDir));
         }

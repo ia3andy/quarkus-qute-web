@@ -7,7 +7,277 @@ h|[.header-title]##Configuration property##
 h|Type
 h|Default
 
-3+|No configuration properties found.
+a|icon:lock[title=Fixed at build time] [[quarkus-qute-web-image_quarkus-qute-image-media-queries-media-queries]] [.property-path]##link:#quarkus-qute-web-image_quarkus-qute-image-media-queries-media-queries[`quarkus.qute.image.media-queries."media-queries"`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.qute.image.media-queries."media-queries"+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Global CSS media queries, referenced by baseName (e.g., mobile, tablet, desktop). Example: desktop -> "max-width: 1200px"
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_QUTE_IMAGE_MEDIA_QUERIES__MEDIA_QUERIES_+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_QUTE_IMAGE_MEDIA_QUERIES__MEDIA_QUERIES_+++`
+endif::add-copy-button-to-env-var[]
+--
+|Map<String,String>
+|
+
+a|icon:lock[title=Fixed at build time] [[quarkus-qute-web-image_quarkus-qute-image-library]] [.property-path]##link:#quarkus-qute-web-image_quarkus-qute-image-library[`quarkus.qute.image.library`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.qute.image.library+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+By default, the Java ImageIO library will be used to process images.
+Supported formats are limited to the following and cropping is basic:
+
+[cols="1,1,1", options="header"]
+\|===
+\| Format \| Readable \| Writable
+
+\| JPEG (`jpg`, `jpeg`) \| Yes \| Yes
+\| PNG (`png`) \| Yes \| Yes
+\| GIF (`gif`) \| Yes \| Yes
+\| BMP (`bmp`) \| Yes \| Yes
+\| WBMP (`wbmp`) \| Yes \| Yes
+\|===
+
+To enable additional formats (e.g., TIFF, WebP, HEIC) and more options, you can use **libvips** native libraries,
+which requires binaries available in your system path.
+See: https://github.com/lopcode/vips-ffm?tab=readme-ov-file#native-library-loading
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_QUTE_IMAGE_LIBRARY+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_QUTE_IMAGE_LIBRARY+++`
+endif::add-copy-button-to-env-var[]
+--
+a|`imageio`, `libvips`
+|`+++imageio+++`
+
+a|icon:lock[title=Fixed at build time] [[quarkus-qute-web-image_quarkus-qute-image-presets-presets-formats]] [.property-path]##link:#quarkus-qute-web-image_quarkus-qute-image-presets-presets-formats[`quarkus.qute.image.presets."presets".formats`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.qute.image.presets."presets".formats+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Output formats in preference order (e.g., webp, jpg).
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__FORMATS+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__FORMATS+++`
+endif::add-copy-button-to-env-var[]
+--
+|list of string
+|`+++webp+++`, `+++jpg+++`
+
+a|icon:lock[title=Fixed at build time] [[quarkus-qute-web-image_quarkus-qute-image-presets-presets-linked-presets]] [.property-path]##link:#quarkus-qute-web-image_quarkus-qute-image-presets-presets-linked-presets[`quarkus.qute.image.presets."presets".linked-presets`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.qute.image.presets."presets".linked-presets+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Linked presets to generate alongside this one. When this preset is used, all listed presets will also be generated.
+
+Example: The "post-picture" preset may also generate "post-thumbnail" and "post-miniature" so they are available for dynamic usage (e.g., in loops where the src is determined at runtime).
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__LINKED_PRESETS+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__LINKED_PRESETS+++`
+endif::add-copy-button-to-env-var[]
+--
+|list of string
+|required icon:exclamation-circle[title=Configuration property is required]
+
+a|icon:lock[title=Fixed at build time] [[quarkus-qute-web-image_quarkus-qute-image-presets-presets-fallback-format]] [.property-path]##link:#quarkus-qute-web-image_quarkus-qute-image-presets-presets-fallback-format[`quarkus.qute.image.presets."presets".fallback-format`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.qute.image.presets."presets".fallback-format+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Fallback format for the  element. Example: "jpg".
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__FALLBACK_FORMAT+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__FALLBACK_FORMAT+++`
+endif::add-copy-button-to-env-var[]
+--
+|string
+|`+++jpg+++`
+
+a|icon:lock[title=Fixed at build time] [[quarkus-qute-web-image_quarkus-qute-image-presets-presets-widths]] [.property-path]##link:#quarkus-qute-web-image_quarkus-qute-image-presets-presets-widths[`quarkus.qute.image.presets."presets".widths`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.qute.image.presets."presets".widths+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Target widths for responsive srcsets (pixel-based). Not used for pixel-ratio presets (see baseWidth {plus} pixelRatios).
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__WIDTHS+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__WIDTHS+++`
+endif::add-copy-button-to-env-var[]
+--
+|list of int
+|required icon:exclamation-circle[title=Configuration property is required]
+
+a|icon:lock[title=Fixed at build time] [[quarkus-qute-web-image_quarkus-qute-image-presets-presets-quality]] [.property-path]##link:#quarkus-qute-web-image_quarkus-qute-image-presets-presets-quality[`quarkus.qute.image.presets."presets".quality`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.qute.image.presets."presets".quality+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Overall quality for generated images (0-100).
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__QUALITY+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__QUALITY+++`
+endif::add-copy-button-to-env-var[]
+--
+|int
+|`+++100+++`
+
+a|icon:lock[title=Fixed at build time] [[quarkus-qute-web-image_quarkus-qute-image-presets-presets-markup]] [.property-path]##link:#quarkus-qute-web-image_quarkus-qute-image-presets-presets-markup[`quarkus.qute.image.presets."presets".markup`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.qute.image.presets."presets".markup+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Markup mode controlling how attributes are emitted: - "auto" : standard  markup. - "data_auto" : data-++*++ attributes for lazy libraries. - "data_img" : emit only  with data-++*++ attributes. - "direct_url" : return direct URL only (no /).
+
+Note: if absent, default to "auto" in your service.
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__MARKUP+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__MARKUP+++`
+endif::add-copy-button-to-env-var[]
+--
+a|`auto`, `data-auto`, `data-img`, `direct-url`
+|`+++auto+++`
+
+a|icon:lock[title=Fixed at build time] [[quarkus-qute-web-image_quarkus-qute-image-presets-presets-noscript]] [.property-path]##link:#quarkus-qute-web-image_quarkus-qute-image-presets-presets-noscript[`quarkus.qute.image.presets."presets".noscript`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.qute.image.presets."presets".noscript+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Whether to include a  fallback block.
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__NOSCRIPT+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__NOSCRIPT+++`
+endif::add-copy-button-to-env-var[]
+--
+|boolean
+|`+++false+++`
+
+a|icon:lock[title=Fixed at build time] [[quarkus-qute-web-image_quarkus-qute-image-presets-presets-attributes-attributes]] [.property-path]##link:#quarkus-qute-web-image_quarkus-qute-image-presets-presets-attributes-attributes[`quarkus.qute.image.presets."presets".attributes."attributes"`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.qute.image.presets."presets".attributes."attributes"+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Optional HTML attributes per generated tag (quick win). Keys typically: "picture", "img", "parent", "a". Values are raw attribute strings (e.g., 'class="lazy"').
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__ATTRIBUTES__ATTRIBUTES_+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__ATTRIBUTES__ATTRIBUTES_+++`
+endif::add-copy-button-to-env-var[]
+--
+|Map<String,String>
+|
+
+a|icon:lock[title=Fixed at build time] [[quarkus-qute-web-image_quarkus-qute-image-presets-presets-crop]] [.property-path]##link:#quarkus-qute-web-image_quarkus-qute-image-presets-presets-crop[`quarkus.qute.image.presets."presets".crop`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.qute.image.presets."presets".crop+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Crop aspect ratio (e.g., "1:1", "4:3") and which part of the image to keep when cropping. Optional.
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__CROP+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__CROP+++`
+endif::add-copy-button-to-env-var[]
+--
+|Crop
+|
+
+a|icon:lock[title=Fixed at build time] [[quarkus-qute-web-image_quarkus-qute-image-presets-presets-pixel-ratio]] [.property-path]##link:#quarkus-qute-web-image_quarkus-qute-image-presets-presets-pixel-ratio[`quarkus.qute.image.presets."presets".pixel-ratio`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.qute.image.presets."presets".pixel-ratio+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Base width (in px) for pixel-ratio presets (used with pixelRatios). Example: 80, 48, 150. Pixel density multipliers (e.g., ++[++1, 1.5, 2++]++) for multiplier srcset. Used when baseWidth is set.
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__PIXEL_RATIO+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_QUTE_IMAGE_PRESETS__PRESETS__PIXEL_RATIO+++`
+endif::add-copy-button-to-env-var[]
+--
+|PixelRatio
+|
 
 |===
 

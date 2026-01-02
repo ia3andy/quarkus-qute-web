@@ -6,10 +6,14 @@ import java.util.Optional;
 
 public record DefaultPresetConfig() implements PresetConfig {
 
-
     @Override
     public List<String> formats() {
-        return List.of("webp", "jpg");
+        return List.of("jpg");
+    }
+
+    @Override
+    public List<String> linkedPresets() {
+        return List.of();
     }
 
     @Override

@@ -1,8 +1,7 @@
 package io.quarkiverse.qute.web.image.deployment;
 
-import static io.quarkiverse.qute.web.image.deployment.ImageIOConverter.processImage;
-import static io.quarkiverse.qute.web.image.deployment.ImageIOConverter.resizedImagePath;
 import static io.quarkiverse.qute.web.image.deployment.QuteImageScanProcessor.toUnixPath;
+import static io.quarkiverse.qute.web.image.runtime.converter.ImageIOConverter.processImage;
 
 import java.io.IOException;
 import java.net.URI;
@@ -19,17 +18,20 @@ import jakarta.inject.Singleton;
 import org.jboss.logging.Logger;
 
 import io.quarkiverse.qute.web.image.deployment.items.ImagesBuildItem;
-import io.quarkiverse.qute.web.image.deployment.items.ImagesBuildItem.AddImageResult;
-import io.quarkiverse.qute.web.image.deployment.items.ImagesBuildItem.ResolvedSourceImage;
 import io.quarkiverse.qute.web.image.deployment.items.QuteImageTargetDirBuildItem;
 import io.quarkiverse.qute.web.image.deployment.items.QuteImageTemplateToScanBuildItem;
 import io.quarkiverse.qute.web.image.deployment.items.QuteImageTemplateToScanBuildItem.ImageTagSection;
 import io.quarkiverse.qute.web.image.runtime.ImageConfig;
 import io.quarkiverse.qute.web.image.runtime.ImageRecorder;
 import io.quarkiverse.qute.web.image.runtime.ImageSectionHelperFactory;
-import io.quarkiverse.qute.web.image.runtime.Images;
-import io.quarkiverse.qute.web.image.runtime.Images.ImageId;
-import io.quarkiverse.qute.web.image.spi.items.ImageSourceDirBuildItem;
+import io.quarkiverse.qute.web.image.runtime.ImageTemplateExtension;
+import io.quarkiverse.qute.web.image.runtime.model.GeneratedImage;
+import io.quarkiverse.qute.web.image.runtime.model.ImageId;
+import io.quarkiverse.qute.web.image.runtime.model.Images;
+import io.quarkiverse.qute.web.image.runtime.model.ResolvedSourceImage;
+import io.quarkiverse.qute.web.image.runtime.model.ScannedImageTag;
+import io.quarkiverse.qute.web.image.runtime.model.builder.ImagesBuilder.AddImageResult;
+import io.quarkiverse.qute.web.image.spi.items.ImagesDirBuildItem;
 import io.quarkiverse.qute.web.image.spi.items.WhitelistDirBuildItem;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
@@ -57,6 +59,7 @@ public class QuteImageProcessor {
             BuildProducer<AdditionalBeanBuildItem> additionalBeans) {
         additionalBeans.produce(new AdditionalBeanBuildItem(Images.class));
         additionalBeans.produce(new AdditionalBeanBuildItem(ImageSectionHelperFactory.class));
+        additionalBeans.produce(new AdditionalBeanBuildItem(ImageTemplateExtension.class));
     }
 
     @BuildStep
@@ -66,7 +69,7 @@ public class QuteImageProcessor {
             BuildProducer<GeneratedStaticResourceBuildItem> staticResourceProducer,
             QuteImageTargetDirBuildItem targetDir,
             List<WhitelistDirBuildItem> whitelistDirs,
-            List<ImageSourceDirBuildItem> imageSourceDirs) {
+            List<ImagesDirBuildItem> imageSourceDirs) {
         if (templateToScan.isEmpty()) {
             return null;
         }
@@ -106,7 +109,7 @@ public class QuteImageProcessor {
         }
 
         syntheticBeanProducer.produce(SyntheticBeanBuildItem.configure(Images.class)
-                .supplier(imageRecorder.imagesSupplier(images.tags()))
+                .supplier(imageRecorder.imagesSupplier(images.builder().computeImageTags()))
                 .named("images")
                 .scope(Singleton.class)
                 .unremovable()
@@ -140,20 +143,18 @@ public class QuteImageProcessor {
 
     private static void collectImage(ImageTagSection tag, String templateName, Path templatePath, ImagesBuildItem images,
             BuildProducer<GeneratedStaticResourceBuildItem> staticResourceProducer, Path targetDist,
-            Predicate<Path> whitelistPredicate, List<ImageSourceDirBuildItem> imageSourceDirs) {
+            Predicate<Path> whitelistPredicate, List<ImagesDirBuildItem> imageDirs) {
 
         Path imagePath = Path.of(tag.fileParam());
         ResolvedSourceImage resolvedImage;
         // We can't use Path.isAbsolute on Windows, and our paths are expected to be URIs anyways
         if (tag.fileParam().startsWith("/")) {
-            // we need to resolve by passing a string, otherwise we get an exception due to different FS providers
-            // for zip filesystems
-            resolvedImage = resolveAbsoluteFile(images, whitelistPredicate, imageSourceDirs,
+            // We resolve absolute from provided image dirs
+            resolvedImage = resolveFromImageDir(images, whitelistPredicate, imageDirs,
                     tag.fileParam());
         } else if (templatePath != null) {
             Path resolvedPath = templatePath.getParent().resolve(imagePath).normalize();
-            // currently we know the path is on the local fs, we might add support for relative resources in the future
-            // all build dirs are whitelisted
+            // all images dirs and src are automatically whitelisted
             final String name = resolvedPath.getFileName().toString();
             resolvedImage = resolveImage(whitelistPredicate, images, resolvedPath, name, false, null);
             if (resolvedImage == null) {
@@ -168,43 +169,35 @@ public class QuteImageProcessor {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debugf(" Found image tag for image: %s", imagePath);
         }
-        AddImageResult collectedImageResult = images.addImage(resolvedImage);
-        final Images.ImageTag imageTag = images.registerImageTag(tag.section().getOrigin().getTemplateId(), tag.fileParam(),
-                resolvedImage.id().publicPath(), tag.presetConfig(),
+        AddImageResult collectedImageResult = images.builder().addImage(resolvedImage);
+        final ScannedImageTag imageTag = images.builder().scannedImageTag(tag.section().getOrigin().getTemplateId(),
+                tag.fileParam(),
+                tag.presetConfig(),
                 collectedImageResult.image());
         if (collectedImageResult.created()) {
-            if (!resolvedImage.served()) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debugf("Serving original file: %s", resolvedImage.id().publicPath());
+            final Map<GeneratedImage, Path> generatedImages = processImage(imageTag, resolvedImage,
+                    collectedImageResult.image(), targetDist);
+            for (Map.Entry<GeneratedImage, Path> e : generatedImages.entrySet()) {
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.tracef("Generated '%s' (%s)", e.getValue(),
+                            e.getKey());
                 }
                 staticResourceProducer.produce(new GeneratedStaticResourceBuildItem(
-                        resolvedImage.id().publicPath(),
-                        resolvedImage.contents()));
-            }
-
-            processImage(imageTag, resolvedImage, collectedImageResult.image(), targetDist);
-            for (Map.Entry<Integer, Images.Variant> e : collectedImageResult.image().variants().entrySet()) {
-                Path scaledAbsolutePath = resizedImagePath(targetDist, e.getValue());
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debugf("   [%s] Resized to %s, accessible at: %s", e.getValue().width(), scaledAbsolutePath,
-                            e.getValue().path());
-                }
-                staticResourceProducer.produce(new GeneratedStaticResourceBuildItem(
-                        e.getValue().path(),
-                        scaledAbsolutePath));
+                        e.getKey().outputPath(),
+                        e.getValue()));
             }
         }
 
     }
 
-    private static ResolvedSourceImage resolveAbsoluteFile(ImagesBuildItem images,
-            Predicate<Path> whitelistPredicate,
-            List<ImageSourceDirBuildItem> imageSourceDirs,
-            String absolutePath) {
-        final String relativePath = absolutePath.substring(1);
-        for (ImageSourceDirBuildItem imageSourceDir : imageSourceDirs) {
+    private static ResolvedSourceImage resolveFromImageDir(ImagesBuildItem images,
+                                                           Predicate<Path> whitelistPredicate,
+                                                           List<ImagesDirBuildItem> imagesDirs,
+                                                           String path) {
+        final String relativePath = path.substring(1);
+        for (ImagesDirBuildItem imageSourceDir : imagesDirs) {
             Path resolvedPath = imageSourceDir.basePath().resolve(relativePath).normalize();
-            final String publicPath = imageSourceDir.toPublicPath(absolutePath);
+            final String publicPath = imageSourceDir.toPublicPath(path);
             ResolvedSourceImage ret = resolveImage(whitelistPredicate, images, resolvedPath,
                     Path.of(publicPath).getFileName().toString(), imageSourceDir.isResource(),
                     imageSourceDir.isServed() ? publicPath : null);
@@ -212,7 +205,7 @@ public class QuteImageProcessor {
                 return ret;
             }
         }
-        final List<String> sources = imageSourceDirs.stream().map(ImageSourceDirBuildItem::basePath)
+        final List<String> sources = imagesDirs.stream().map(ImagesDirBuildItem::basePath)
                 .map(QuteImageScanProcessor::toUnixPath).toList();
         throw new RuntimeException(
                 "Image does not exist or is not a file: " + relativePath + " (looked up at " + sources + ")");
@@ -233,7 +226,7 @@ public class QuteImageProcessor {
             QuarkusClassLoader.visitRuntimeResources(resourcePath, c -> {
                 try {
                     final byte[] contents = Files.readAllBytes(c.getPath());
-                    ImageId id = images.getImageId(c.getPath().toAbsolutePath(), name, contents, publicPath);
+                    ImageId id = images.builder().getImageId(c.getPath().toAbsolutePath(), name, contents, publicPath);
                     image.set(new ResolvedSourceImage(resolvedPath, id, publicPath != null, contents));
                 } catch (IOException e) {
                     throw new RuntimeException("Failed to read image " + resolvedPath + " from the classpath", e);
@@ -250,7 +243,7 @@ public class QuteImageProcessor {
             if (Files.isRegularFile(absolutePath)) {
                 try {
                     final byte[] contents = Files.readAllBytes(absolutePath);
-                    ImageId id = images.getImageId(absolutePath, name, contents, publicPath);
+                    ImageId id = images.builder().getImageId(absolutePath, name, contents, publicPath);
                     return new ResolvedSourceImage(absolutePath, id, publicPath != null, contents);
                 } catch (IOException e) {
                     throw new RuntimeException("Failed to read image " + resolvedPath + " from the filesystem", e);

@@ -1,0 +1,35 @@
+{@io.quarkiverse.qute.web.image.runtime.model.ImageTag image}
+{#if image.isDirectUrl}
+{image.directUrl}
+{#else if image.isDataImg}
+<img {image.imgAttrs} {image.parentAttrs}
+  {image.imgSrcAttrName}="{image.imgSrc}"
+  {#if image.hasImgSrcset}{image.imgSrcsetAttrName}="{image.imgSrcset}"{/if}>
+{#if image.noscript}
+<noscript>{image.imgSrc}</noscript>
+{/if}
+{#else if image.isPicture}
+<picture {image.pictureAttrs} {image.parentAttrs}>
+  {#for s in image.sources}
+  <source {s.attrName}="{s.srcset}" type="{s.type}">
+  {/for}
+  <img {image.imgAttrs} {image.imgSrcAttrName}="{image.imgSrc}">
+</picture>
+{#if image.noscript}
+<noscript>
+  <picture>
+    {#for s in image.sources}
+    {s.srcset}
+    {/for}
+    {image.imgSrc}
+  </picture>
+</noscript>
+{/if}
+{#else}
+<img {image.imgAttrs} {image.parentAttrs}
+  {image.imgSrcAttrName}="{image.imgSrc}"
+  {#if image.hasImgSrcset}{image.imgSrcsetAttrName}="{image.imgSrcset}"{/if}>
+{#if image.noscript}
+<noscript>{image.imgSrc}</noscript>
+{/if}
+{/if}

@@ -9,6 +9,9 @@
     <artifactId>quarkus-qute-web-image-parent</artifactId>
     <name>Quarkus Qute - Image - Parent</name>
     <packaging>pom</packaging>
+    <properties>
+        <thumbnailator.version>0.4.21</thumbnailator.version>
+    </properties>
     <modules>
         <module>spi</module>
         <module>runtime</module>
