@@ -8,7 +8,6 @@ import io.smallrye.config.WithDefault;
 
 public interface PresetConfig {
 
-
     PresetConfig DEFAULT = new DefaultPresetConfig();
 
     /**
@@ -16,6 +15,15 @@ public interface PresetConfig {
      */
     @WithDefault("webp,jpg")
     List<String> formats();
+
+    /**
+     * Linked presets to generate alongside this one.
+     * When this preset is used, all listed presets will also be generated.
+     * <p>
+     * Example: The "post-picture" preset may also generate "post-thumbnail" and "post-miniature"
+     * so they are available for dynamic usage (e.g., in loops where the src is determined at runtime).
+     */
+    List<String> linkedPresets();
 
     /**
      * Fallback format for the <img> element.
@@ -33,6 +41,7 @@ public interface PresetConfig {
     /**
      * Overall quality for generated images (0-100).
      */
+    @WithDefault("100")
     Integer quality();
 
     /**
@@ -68,7 +77,8 @@ public interface PresetConfig {
     Map<String, String> attributes();
 
     /**
-     * Crop aspect ratio (e.g., "1:1", "4:3"). Optional.
+     * Crop aspect ratio (e.g., "1:1", "4:3") and which part of the image to keep when cropping.
+     * Optional.
      */
     Optional<Crop> crop();
 
@@ -90,6 +100,7 @@ public interface PresetConfig {
     // String size();                             // Unconditional size ("800px")
 
     record Crop(String ratio, String keep) {
+
     }
 
     record PixelRatio(int baseWidth, int fallbackWidth, List<Double> ratios) {

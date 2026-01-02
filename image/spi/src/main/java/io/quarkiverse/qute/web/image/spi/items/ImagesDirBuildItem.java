@@ -24,13 +24,13 @@ import io.quarkus.builder.item.MultiBuildItem;
  *   Public path: "/fo-/some.jpg"
  * </pre>
  */
-public final class ImageSourceDirBuildItem extends MultiBuildItem {
+public final class ImagesDirBuildItem extends MultiBuildItem {
 
     private final Path basePath;
     private final boolean isResource;
     private final Function<String, String> toPublicPathFunction;
 
-    public ImageSourceDirBuildItem(Path basePath, boolean isResource, Function<String, String> toPublicPathFunction) {
+    public ImagesDirBuildItem(Path basePath, boolean isResource, Function<String, String> toPublicPathFunction) {
         this.basePath = basePath;
         this.isResource = isResource;
         this.toPublicPathFunction = toPublicPathFunction;
