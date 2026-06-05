@@ -21,6 +21,7 @@ public record DefaultPresetConfig() implements PresetConfig {
         return "jpg";
     }
 
+    // From https://dev.to/razbakov/responsive-images-best-practices-in-2025-4dlb
     @Override
     public List<Integer> widths() {
         return List.of(640, 1024, 1920, 2560);

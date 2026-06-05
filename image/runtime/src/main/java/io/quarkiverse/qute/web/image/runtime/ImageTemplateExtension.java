@@ -94,7 +94,7 @@ public class ImageTemplateExtension {
 
     // ----------- <source> list for <picture> -----------
     public static List<Source> sources(ImageTag it) {
-        List<String> formats = it.config().formats();
+        List<String> formats = it.config().normalizedFormats();
         if (formats == null)
             return List.of();
 
@@ -105,7 +105,7 @@ public class ImageTemplateExtension {
         for (String fmt : formats) {
             String srcset = buildSrcset(it.image(), fmt, it.config().pixelRatio().orElse(null), originalFormat);
             if (!srcset.isBlank()) {
-                String type = mimeType(fmt, originalFormat);
+                String type = format(fmt, originalFormat);
                 list.add(new Source(attrName, srcset, type));
             }
         }
@@ -155,13 +155,13 @@ public class ImageTemplateExtension {
 
     private static boolean matchesFormat(GeneratedImage gi, String fmt, String originalFormat) {
         if ("original".equalsIgnoreCase(fmt)) {
-            return eq(gi.format(), originalFormat) || eq(gi.extension(), originalFormat);
+            return eq(gi.format(), originalFormat);
         }
-        return eq(gi.format(), fmt) || eq(gi.extension(), fmt);
+        return eq(gi.format(), fmt);
     }
 
     private static boolean eq(String a, String b) {
-        return a != null && b != null && a.equalsIgnoreCase(b);
+        return a != null && a.equalsIgnoreCase(b);
     }
 
     private static String joinWithComma(List<String> parts) {
@@ -176,25 +176,14 @@ public class ImageTemplateExtension {
     }
 
     private static String singleFormat(ImageTag it) {
-        List<String> formats = it.config().formats();
+        List<String> formats = it.config().normalizedFormats();
         if (formats == null || formats.size() != 1)
             return null;
         return formats.get(0);
     }
 
-    public static String mimeType(String fmt, String originalFormat) {
-        String f = fmt.equalsIgnoreCase("original") ? originalFormat : fmt;
-        if (f == null)
-            return "application/octet-stream";
-        return switch (f.toLowerCase(Locale.ROOT)) {
-            case "jpg", "jpeg" -> "image/jpeg";
-            case "png" -> "image/png";
-            case "webp" -> "image/webp";
-            case "avif" -> "image/avif";
-            case "gif" -> "image/gif";
-            case "jp2", "j2k", "jpx" -> "image/jp2";
-            default -> "image/" + f.toLowerCase(Locale.ROOT);
-        };
+    public static String format(String fmt, String originalFormat) {
+        return fmt.equalsIgnoreCase("original") ? originalFormat : fmt;
     }
 
     // Minimal POJO for <source> rendering

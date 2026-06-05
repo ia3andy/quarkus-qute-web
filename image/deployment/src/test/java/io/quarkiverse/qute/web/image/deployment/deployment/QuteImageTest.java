@@ -26,7 +26,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkiverse.qute.web.image.spi.items.ImagesDirBuildItem;
-import io.quarkiverse.qute.web.image.spi.items.WhitelistDirBuildItem;
 import io.quarkus.bootstrap.classloading.QuarkusClassLoader;
 import io.quarkus.builder.BuildChainBuilder;
 import io.quarkus.builder.BuildContext;
@@ -64,15 +63,13 @@ public class QuteImageTest {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            context.produce(new ImagesDirBuildItem(java.nio.file.Path.of("/web"), true, new Mapper()));
+            context.produce(ImagesDirBuildItem.resource("/web"));
             AtomicReference<java.nio.file.Path> root = new AtomicReference<>();
             QuarkusClassLoader.visitRuntimeResources("web/static/images/white_1920_1080.png", p -> {
                 root.set(p.getRoot());
             });
             context.produce(
-                    new WhitelistDirBuildItem(root.get()));
-            context.produce(
-                    new ImagesDirBuildItem(java.nio.file.Path.of("target/test-classes/roq-public"), false, null));
+                    ImagesDirBuildItem.localDir(java.nio.file.Path.of("target/test-classes/roq-public")));
         }
 
         private static class Mapper implements Function<String, String> {
@@ -88,7 +85,6 @@ public class QuteImageTest {
         @Override
         public void accept(BuildChainBuilder buildChainBuilder) {
             buildChainBuilder.addBuildStep(new MyBuildStep())
-                    .produces(WhitelistDirBuildItem.class)
                     .produces(TemplatePathBuildItem.class)
                     .produces(ImagesDirBuildItem.class)
                     .build();
@@ -111,18 +107,19 @@ public class QuteImageTest {
         assertThat(imgs, hasSize(2));
 
         String[] urls = {
+                "/static/images/generated/1b139664/relative-1920-68cb06dc.jpg",
+                "/static/images/generated/1b139664/relative-1024-68cb06dc.jpg",
+                "/static/images/generated/1b139664/relative-640-68cb06dc.jpg"
+        };
+
+        checkImageSrc(imgs.get(0), urls);
+
+        String[] urls1 = {
                 "/static/images/generated/1b139664/white_1920_1080-1920-7840f5f2.jpg",
                 "/static/images/generated/1b139664/white_1920_1080-1024-7840f5f2.jpg",
                 "/static/images/generated/1b139664/white_1920_1080-640-7840f5f2.jpg"
         };
-
-        for (Element img : imgs) {
-            assertThat(img.attr("src"), is(urls[0]));
-            String srcset = img.attr("srcset");
-            for (String entry : urls) {
-                assertThat(srcset, containsString(entry));
-            }
-        }
+        checkImageSrc(imgs.get(1), urls1);
 
         for (String url : urls) {
             RestAssured.given().get(url).then().statusCode(200);
@@ -130,9 +127,16 @@ public class QuteImageTest {
 
     }
 
+    private static void checkImageSrc(Element img, String[] urls) {
+        assertThat(img.attr("src"), is(urls[0]));
+        String srcset = img.attr("srcset");
+        for (String entry : urls) {
+            assertThat(srcset, containsString(entry));
+        }
+    }
+
     @Test
     public void testImageRunTime() {
-
         RestAssured.given()
                 .get("/rest")
                 .then()

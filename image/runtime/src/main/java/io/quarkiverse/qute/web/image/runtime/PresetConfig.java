@@ -1,5 +1,7 @@
 package io.quarkiverse.qute.web.image.runtime;
 
+import static io.quarkiverse.qute.web.image.runtime.ImageUtils.normalizeFormat;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -15,6 +17,10 @@ public interface PresetConfig {
      */
     @WithDefault("webp,jpg")
     List<String> formats();
+
+    default List<String> normalizedFormats() {
+        return formats().stream().map(ImageUtils::normalizeFormat).toList();
+    }
 
     /**
      * Linked presets to generate alongside this one.
@@ -99,8 +105,18 @@ public interface PresetConfig {
     // Map<String, String> sizes();               // Conditional sizes by media query key
     // String size();                             // Unconditional size ("800px")
 
-    record Crop(String ratio, String keep) {
+    record Crop(String ratio, Keep keep) {
 
+    }
+
+    enum Keep {
+        NONE,
+        ALL,
+        ENTROPY,
+        CENTER,
+        ATTENTION,
+        LOW,
+        HIGH,
     }
 
     record PixelRatio(int baseWidth, int fallbackWidth, List<Double> ratios) {

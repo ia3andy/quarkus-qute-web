@@ -1,6 +1,6 @@
 package io.quarkiverse.qute.web.image.deployment.items;
 
-import io.quarkiverse.qute.web.image.runtime.model.builder.ImagesBuilder;
+import io.quarkiverse.qute.web.image.deployment.items.model.ImagesBuilder;
 import io.quarkus.builder.item.SimpleBuildItem;
 
 public final class ImagesBuildItem extends SimpleBuildItem {
@@ -12,4 +12,5 @@ public final class ImagesBuildItem extends SimpleBuildItem {
     public ImagesBuilder builder() {
         return builder;
     }
+
 }
