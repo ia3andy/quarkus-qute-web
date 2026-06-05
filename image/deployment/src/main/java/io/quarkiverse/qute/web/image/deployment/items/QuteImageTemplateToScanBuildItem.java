@@ -22,7 +22,7 @@ public final class QuteImageTemplateToScanBuildItem extends MultiBuildItem {
 
     public QuteImageTemplateToScanBuildItem(URI location, List<ImageTagSection> sectionNodes, String id) {
         this.location = location;
-        // We make sure absolute path are processed before
+        // We make sure absolute basePath are processed before
         // so that we use them if relative are targeting a static image
         this.sectionNodes = sectionNodes.stream().sorted(Comparator.comparing(ImageTagSection::isAbsolute)).toList();
         this.id = id;

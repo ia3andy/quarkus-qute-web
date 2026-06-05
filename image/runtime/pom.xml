@@ -18,12 +18,7 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-qute</artifactId>
         </dependency>
-        <dependency>
-            <groupId>net.coobird</groupId>
-            <artifactId>thumbnailator</artifactId>
-            <version>${thumbnailator.version}</version>
-            <optional>true</optional>
-        </dependency>
+
     </dependencies>
     <build>
         <plugins>

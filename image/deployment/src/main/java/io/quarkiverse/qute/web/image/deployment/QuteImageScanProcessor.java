@@ -3,12 +3,10 @@ package io.quarkiverse.qute.web.image.deployment;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -17,13 +15,9 @@ import io.quarkiverse.qute.web.image.deployment.items.QuteImageTemplateToScanBui
 import io.quarkiverse.qute.web.image.deployment.items.QuteImageTemplateToScanBuildItem.ImageTagSection;
 import io.quarkiverse.qute.web.image.runtime.ImageConfig;
 import io.quarkiverse.qute.web.image.runtime.PresetConfig;
-import io.quarkiverse.qute.web.image.spi.items.ImagesDirBuildItem;
-import io.quarkiverse.qute.web.image.spi.items.WhitelistDirBuildItem;
-import io.quarkus.bootstrap.workspace.WorkspaceModule;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.builditem.LaunchModeBuildItem;
-import io.quarkus.deployment.pkg.builditem.CurateOutcomeBuildItem;
 import io.quarkus.deployment.pkg.builditem.OutputTargetBuildItem;
 import io.quarkus.deployment.util.FileUtil;
 import io.quarkus.qute.Expression;
@@ -37,35 +31,6 @@ import io.quarkus.qute.deployment.TemplatesAnalysisBuildItem;
 public class QuteImageScanProcessor {
 
     public static final String TARGET_DIR_NAME = "qute-image/";
-
-    @BuildStep
-    void initWhitelist(CurateOutcomeBuildItem curateOutcome, List<ImagesDirBuildItem> imagesDirs,
-                       BuildProducer<WhitelistDirBuildItem> whitelistDirs) {
-        // Add all src from the app module
-        Set<Path> outputPaths = new HashSet<>();
-        outputPaths
-                .addAll(curateOutcome.getApplicationModel().getApplicationModule().getMainSources().getOutputTree().getRoots());
-        outputPaths
-                .addAll(curateOutcome.getApplicationModel().getApplicationModule().getTestSources().getOutputTree().getRoots());
-        // Add all target dirs from other modules
-        for (WorkspaceModule workspaceModule : curateOutcome.getApplicationModel().getWorkspaceModules()) {
-            outputPaths.addAll(workspaceModule.getMainSources().getOutputTree().getRoots());
-        }
-        outputPaths.forEach(path -> addDirIfExists(whitelistDirs, path));
-
-        // Add all provided images dir
-        for (ImagesDirBuildItem dir : imagesDirs) {
-            if (!dir.isResource()) {
-                addDirIfExists(whitelistDirs, dir.basePath());
-            }
-        }
-    }
-
-    private static void addDirIfExists(BuildProducer<WhitelistDirBuildItem> whitelistDirs, Path buildDir) {
-        if (buildDir != null && Files.isDirectory(buildDir)) {
-            whitelistDirs.produce(new WhitelistDirBuildItem(buildDir));
-        }
-    }
 
     @BuildStep
     QuteImageTargetDirBuildItem initTargetDir(OutputTargetBuildItem outputTarget, LaunchModeBuildItem launchMode) {
@@ -103,6 +68,19 @@ public class QuteImageScanProcessor {
                                     .map(imageTagSectionMapper(config)).toList(),
                             analysis.path));
         }
+    }
+
+    private static Path resolveSourcePath(QuteImageTemplateToScanBuildItem template) {
+        if (template == null || template.location == null) {
+            return null;
+        }
+        if (template.location.getScheme() == null) {
+            URI baseUri = Paths.get("").toAbsolutePath().toUri();
+            return Paths.get(baseUri.resolve(template.location));
+        }
+        if ("file".equalsIgnoreCase(template.location.getScheme()))
+            return Paths.get(template.location);
+        return null;
     }
 
     private static Function<TemplateNode, ImageTagSection> imageTagSectionMapper(ImageConfig config) {
@@ -149,12 +127,12 @@ public class QuteImageScanProcessor {
     }
 
     // Kept in case we need it later
-    //    private void findTemplatePath(String path, List<TemplatePathBuildItem> tp) {
-    //        System.err.println("Looking for template " + path);
+    //    private void findTemplatePath(String basePath, List<TemplatePathBuildItem> tp) {
+    //        System.err.println("Looking for template " + basePath);
     //        for (TemplatePathBuildItem templatePathBuildItem : tp) {
     //            //            System.err.println(" Looking at " + templatePathBuildItem.getPath());
-    //            if (path.equals(templatePathBuildItem.getPath())) {
-    //                System.err.println("  Full path: " + templatePathBuildItem.getFullPath());
+    //            if (basePath.equals(templatePathBuildItem.getPath())) {
+    //                System.err.println("  Full basePath: " + templatePathBuildItem.getFullPath());
     //                return;
     //            }
     //        }

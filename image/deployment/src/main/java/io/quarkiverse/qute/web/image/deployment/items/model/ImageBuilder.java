@@ -1,4 +1,4 @@
-package io.quarkiverse.qute.web.image.runtime.model.builder;
+package io.quarkiverse.qute.web.image.deployment.items.model;
 
 import java.util.HashMap;
 import java.util.List;
@@ -7,7 +7,6 @@ import java.util.function.Consumer;
 
 import io.quarkiverse.qute.web.image.runtime.ImageUtils;
 import io.quarkiverse.qute.web.image.runtime.model.GeneratedImage;
-import io.quarkiverse.qute.web.image.runtime.model.GeneratedImageOptions;
 import io.quarkiverse.qute.web.image.runtime.model.Image;
 import io.quarkiverse.qute.web.image.runtime.model.ImageId;
 import io.quarkiverse.qute.web.image.runtime.model.OriginalInfo;

@@ -1,26 +1,21 @@
-package io.quarkiverse.qute.web.image.runtime.model.builder;
+package io.quarkiverse.qute.web.image.deployment.items.model;
 
 import static io.quarkiverse.qute.web.image.runtime.ImageUtils.digest;
 import static io.quarkiverse.qute.web.image.runtime.ImageUtils.imageTagKey;
 
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.quarkiverse.qute.web.image.runtime.PresetConfig;
+import io.quarkiverse.qute.web.image.runtime.model.Image;
 import io.quarkiverse.qute.web.image.runtime.model.ImageId;
 import io.quarkiverse.qute.web.image.runtime.model.ImageTag;
-import io.quarkiverse.qute.web.image.runtime.model.ResolvedSourceImage;
-import io.quarkiverse.qute.web.image.runtime.model.ScannedImageTag;
 
 public class ImagesBuilder {
 
-
-    private final Map<String, Set<>>
-
-    // cache of absolute image path to image digest
-    private final Map<Path, ImageId> imageIdsByPath = new HashMap<>();
+    // cache of absolute image basePath to image digest
+    private final Map<String, ImageId> imageIdsByPath = new HashMap<>();
     // map of image (digest/file) to image
     private final Map<String, ImageBuilder> images = new HashMap<>();
     private final Map<String, ScannedImageTag> scannedImageTags = new HashMap<>();
@@ -37,9 +32,24 @@ public class ImagesBuilder {
         return computed;
     }
 
-    public ImageId getImageId(Path path, String fileName, byte[] content, String publicPath) {
-        final Path normalize = path.normalize();
-        ImageId id = imageIdsByPath.get(normalize);
+    public Map<String, Image> computeImages() {
+        Map<String, Image> computed = new HashMap<>();
+        for (Map.Entry<String, ImageId> e : imageIdsByPath.entrySet()) {
+            if (computed.containsKey(e.getKey())) {
+                throw new IllegalStateException(
+                        "Duplicate basePath %s for image id %s".formatted(e.getKey(), e.getValue().key()));
+            }
+            if (!images.containsKey(e.getValue().key())) {
+                throw new IllegalStateException("Image not found for basePath %s".formatted(e.getKey()));
+            }
+            final ImageBuilder i = images.get(e.getValue().key());
+            computed.put(e.getKey(), i.build());
+        }
+        return computed;
+    }
+
+    public ImageId getImageId(String path, String fileName, byte[] content) {
+        ImageId id = imageIdsByPath.get(path);
         if (fileName.indexOf('.') <= 1) {
             throw new IllegalArgumentException("Invalid image file name: '%s'".formatted(path));
         }
@@ -47,20 +57,22 @@ public class ImagesBuilder {
         if (id == null) {
             String digest = digest(content);
             id = new ImageId(digest, name[0], name[1]);
-            imageIdsByPath.put(normalize, id);
+            imageIdsByPath.put(path, id);
         }
         return id;
     }
 
     public AddImageResult addImage(ResolvedSourceImage resolvedImage) {
         /*
-         * The idea here is that we want to make sure responsives for a unique absolute path end up in the same folder (same
+         * The idea here is that we want to make sure responsives for a unique absolute basePath end up in the same folder (same
          * digest,
          * same file baseName),
-         * and if someone has the same file (same digest) in more than one absolute path, they also end up in the same folder
+         * and if someone has the same file (same digest) in more than one absolute basePath, they also end up in the same
+         * folder
          * (same
          * digest, same file baseName),
-         * and if someone has the same file (same digest) in more than one absolute path under a different file baseName, they
+         * and if someone has the same file (same digest) in more than one absolute basePath under a different file baseName,
+         * they
          * also
          * end
          * up in the same

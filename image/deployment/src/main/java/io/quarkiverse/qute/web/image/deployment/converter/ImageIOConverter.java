@@ -1,4 +1,4 @@
-package io.quarkiverse.qute.web.image.runtime.converter;
+package io.quarkiverse.qute.web.image.deployment.converter;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -16,19 +16,20 @@ import javax.imageio.stream.ImageInputStream;
 
 import org.jboss.logging.Logger;
 
+import io.quarkiverse.qute.web.image.deployment.items.model.GeneratedImageOptions;
+import io.quarkiverse.qute.web.image.deployment.items.model.ImageBuilder;
+import io.quarkiverse.qute.web.image.deployment.items.model.ResolvedSourceImage;
+import io.quarkiverse.qute.web.image.deployment.items.model.ScannedImageTag;
 import io.quarkiverse.qute.web.image.runtime.ImageUtils;
 import io.quarkiverse.qute.web.image.runtime.model.GeneratedImage;
-import io.quarkiverse.qute.web.image.runtime.model.GeneratedImageOptions;
 import io.quarkiverse.qute.web.image.runtime.model.OriginalInfo;
-import io.quarkiverse.qute.web.image.runtime.model.ResolvedSourceImage;
-import io.quarkiverse.qute.web.image.runtime.model.ScannedImageTag;
-import io.quarkiverse.qute.web.image.runtime.model.builder.ImageBuilder;
 import net.coobird.thumbnailator.Thumbnails;
 
-public class ImageIOConverter {
+public class ImageIOConverter implements ImageConverter {
     private static final Logger LOGGER = Logger.getLogger(ImageIOConverter.class);
 
-    public static Map<GeneratedImage, Path> processImage(ScannedImageTag imageTag,
+    @Override
+    public Map<GeneratedImage, Path> processImage(ScannedImageTag imageTag,
             ResolvedSourceImage resolvedImage,
             ImageBuilder imageBuilder,
             Path targetDist) {
@@ -45,7 +46,7 @@ public class ImageIOConverter {
                         imageTag.config().widths(), imageTag.config());
             }
 
-            final List<String> formats = imageTag.config().formats();
+            final List<String> formats = imageTag.config().normalizedFormats();
 
             for (String format : formats) {
                 for (int dimension : imageTag.config().widths()) {

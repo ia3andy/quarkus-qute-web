@@ -1,4 +1,4 @@
-package io.quarkiverse.qute.web.image.runtime.model;
+package io.quarkiverse.qute.web.image.deployment.items.model;
 
 import io.quarkiverse.qute.web.image.runtime.PresetConfig;
 
