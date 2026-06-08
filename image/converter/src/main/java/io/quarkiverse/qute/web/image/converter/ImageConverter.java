@@ -2,7 +2,7 @@ package io.quarkiverse.qute.web.image.converter;
 
 import java.nio.file.Path;
 
-public interface ImageProcessor {
+public interface ImageConverter {
 
     /**
      * Read an image, detect its format and dimensions.

@@ -14,7 +14,7 @@ import javax.imageio.stream.ImageInputStream;
 import net.coobird.thumbnailator.Thumbnails;
 import net.coobird.thumbnailator.geometry.Positions;
 
-public class ImageIOProcessor implements ImageProcessor {
+public class ImageIOConverter implements ImageConverter {
 
     @Override
     public ImageInfo readInfo(byte[] sourceImage) {

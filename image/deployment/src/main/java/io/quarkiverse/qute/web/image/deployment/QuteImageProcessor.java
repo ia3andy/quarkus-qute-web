@@ -4,30 +4,34 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import jakarta.inject.Singleton;
 
 import org.jboss.logging.Logger;
 
-import io.quarkiverse.qute.web.image.deployment.converter.ImageConverter;
-import io.quarkiverse.qute.web.image.deployment.converter.ImageIOConverter;
+import io.quarkiverse.qute.web.image.converter.ImageConverter;
+import io.quarkiverse.qute.web.image.converter.ImageIOConverter;
+import io.quarkiverse.qute.web.image.converter.ImageInfo;
+import io.quarkiverse.qute.web.image.converter.ImageOptions;
+import io.quarkiverse.qute.web.image.converter.ImageSizing;
 import io.quarkiverse.qute.web.image.deployment.items.ImageConverterBuildItem;
 import io.quarkiverse.qute.web.image.deployment.items.ImagesBuildItem;
 import io.quarkiverse.qute.web.image.deployment.items.QuteImageTargetDirBuildItem;
 import io.quarkiverse.qute.web.image.deployment.items.QuteImageTemplateToScanBuildItem;
 import io.quarkiverse.qute.web.image.deployment.items.QuteImageTemplateToScanBuildItem.ImageTagSection;
+import io.quarkiverse.qute.web.image.deployment.items.model.GeneratedImageOptions;
 import io.quarkiverse.qute.web.image.deployment.items.model.ImagesBuilder;
 import io.quarkiverse.qute.web.image.deployment.items.model.ResolvedSourceImage;
-import io.quarkiverse.qute.web.image.deployment.items.model.ScannedImageTag;
 import io.quarkiverse.qute.web.image.runtime.ImageConfig;
 import io.quarkiverse.qute.web.image.runtime.ImageRecorder;
 import io.quarkiverse.qute.web.image.runtime.ImageSectionHelperFactory;
 import io.quarkiverse.qute.web.image.runtime.ImageTemplateExtension;
-import io.quarkiverse.qute.web.image.runtime.model.GeneratedImage;
+import io.quarkiverse.qute.web.image.runtime.ImageUtils;
+import io.quarkiverse.qute.web.image.runtime.PresetConfig;
 import io.quarkiverse.qute.web.image.runtime.model.ImageId;
 import io.quarkiverse.qute.web.image.runtime.model.Images;
+import io.quarkiverse.qute.web.image.runtime.model.OriginalInfo;
 import io.quarkiverse.qute.web.image.spi.items.ImagesDir;
 import io.quarkiverse.qute.web.image.spi.items.ImagesDirBuildItem;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
@@ -53,7 +57,7 @@ public class QuteImageProcessor {
     @BuildStep
     ImagesBuildItem processTemplatesWithImages(
             ImageConfig imageConfig,
-            Optional<ImageConverterBuildItem> converter,
+            Optional<ImageConverterBuildItem> converterItem,
             List<QuteImageTemplateToScanBuildItem> templateToScan,
             BuildProducer<GeneratedStaticResourceBuildItem> staticResourceProducer,
             QuteImageTargetDirBuildItem targetDir,
@@ -62,23 +66,17 @@ public class QuteImageProcessor {
             return null;
         }
         ImagesBuildItem images = new ImagesBuildItem();
+        ImageConverter converter = converterItem.map(ImageConverterBuildItem::get).orElse(new ImageIOConverter());
 
         for (QuteImageTemplateToScanBuildItem template : templateToScan) {
             if (LOGGER.isDebugEnabled()) {
-                LOGGER.debugf("Inspecting (run-time) template %s for image tags",
-                        template.id);
+                LOGGER.debugf("Inspecting (run-time) template %s for image tags", template.id);
             }
-            // default to null
             Path templatePath = resolveSourcePath(template);
-            final ImageConverter conv = converter.map(ImageConverterBuildItem::get).orElse(new ImageIOConverter());
-            // we don't want to place images in the templates folder
-            for (ImageTagSection resp : template.sectionNodes) {
-
-                collectImage(staticResourceProducer, conv, imageSourceDirs, images, resp,
-                        templatePath, template.id,
-                        targetDir.path);
+            for (ImageTagSection tag : template.sectionNodes) {
+                collectImage(staticResourceProducer, converter, imageSourceDirs, images, tag,
+                        templatePath, template.id, targetDir.path);
             }
-
         }
         return images;
     }
@@ -88,18 +86,89 @@ public class QuteImageProcessor {
     void recordImages(ImageRecorder imageRecorder,
             BuildProducer<SyntheticBeanBuildItem> syntheticBeanProducer,
             ImagesBuildItem images) {
-
         if (images == null) {
             return;
         }
-
         syntheticBeanProducer.produce(SyntheticBeanBuildItem.configure(Images.class)
                 .supplier(imageRecorder.imagesSupplier(images.builder().computeImageTags(), images.builder().computeImages()))
                 .named("images")
                 .scope(Singleton.class)
                 .unremovable()
                 .done());
+    }
 
+    private static void collectImage(BuildProducer<GeneratedStaticResourceBuildItem> staticResourceProducer,
+            ImageConverter converter, List<ImagesDirBuildItem> imageDirs, ImagesBuildItem images, ImageTagSection tag,
+            Path templatePath, String templateName, Path targetDist) {
+
+        ResolvedSourceImage resolvedImage;
+        if (tag.fileParam().startsWith("/")) {
+            resolvedImage = resolveFromImagesDir(images, imageDirs, tag.fileParam());
+        } else if (templatePath != null) {
+            final ImagesDirBuildItem dir = ImagesDirBuildItem.localDir(templatePath.getParent());
+            final ImagesDirResolver resolver = ImagesDirResolver.of(dir);
+            if (resolver.exists(tag.fileParam())) {
+                resolvedImage = resolveImage(images, resolver, tag.fileParam());
+            } else {
+                throw new RuntimeException("Image does not exist or is not a file: " + tag.fileParam()
+                        + " (looked up at " + dir + ")");
+            }
+        } else {
+            throw new RuntimeException(
+                    "Cannot refer to relative files from template when we do not know the template basePath: "
+                            + templateName);
+        }
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debugf(" Found image tag for image: %s", tag.fileParam());
+        }
+
+        ImagesBuilder.AddImageResult result = images.builder().addImage(resolvedImage);
+        PresetConfig preset = tag.presetConfig();
+        PresetConfig.Crop crop = preset.crop().orElse(null);
+
+        ImageInfo info = converter.readInfo(resolvedImage.contents());
+        result.image().info(new OriginalInfo(info.format(), info.width(), info.height()));
+
+        images.builder().scannedImageTag(tag.section().getOrigin().getTemplateId(),
+                tag.fileParam(), tag.presetName(), preset, result.image());
+
+        for (String format : preset.normalizedFormats()) {
+            for (int width : preset.widths()) {
+                if (info.width() < width) {
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debugf("  Skipping width: %s (larger than source)", width);
+                    }
+                    continue;
+                }
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debugf("  Generating width: %s format: %s", width, format);
+                }
+                int height = ImageSizing.computeTargetHeight(width, info.width(), info.height(),
+                        crop != null ? crop.ratio() : null);
+                result.image().addGeneratedImage(
+                        new GeneratedImageOptions(width, height, format, crop, preset.quality()),
+                        generatedImage -> {
+                            Path outputPath = ImageUtils.generatedImagePath(targetDist, generatedImage);
+                            ImageOptions options = new ImageOptions(width, height,
+                                    ImageUtils.extensionFromFormat(format),
+                                    crop != null
+                                            ? new ImageOptions.CropOptions(crop.ratio(), toCropPosition(crop.keep()))
+                                            : null,
+                                    preset.quality());
+                            converter.process(resolvedImage.contents(), options, outputPath);
+                            staticResourceProducer.produce(new GeneratedStaticResourceBuildItem(
+                                    generatedImage.outputPath(), outputPath));
+                        });
+            }
+        }
+    }
+
+    private static ImageOptions.CropPosition toCropPosition(PresetConfig.Keep keep) {
+        return switch (keep) {
+            case LOW -> ImageOptions.CropPosition.BOTTOM;
+            case HIGH -> ImageOptions.CropPosition.TOP;
+            default -> ImageOptions.CropPosition.CENTER;
+        };
     }
 
     private static Path resolveSourcePath(QuteImageTemplateToScanBuildItem template) {
@@ -115,59 +184,8 @@ public class QuteImageProcessor {
         return null;
     }
 
-    private static void collectImage(BuildProducer<GeneratedStaticResourceBuildItem> staticResourceProducer,
-            ImageConverter converter, List<ImagesDirBuildItem> imageDirs, ImagesBuildItem images, ImageTagSection tag,
-            Path templatePath, String templateName,
-            Path targetDist) {
-
-        Path imagePath = Path.of(tag.fileParam());
-        ResolvedSourceImage resolvedImage;
-        // We can't use Path.isAbsolute on Windows, and our paths are expected to be URIs anyways
-        if (tag.fileParam().startsWith("/")) {
-            // We resolve absolute from provided image dirs
-            resolvedImage = resolveFromImagesDir(images, imageDirs,
-                    tag.fileParam());
-        } else if (templatePath != null) {
-            final ImagesDirBuildItem dir = ImagesDirBuildItem.localDir(templatePath.getParent());
-            final ImagesDirResolver resolver = ImagesDirResolver.of(dir);
-            if (resolver.exists(tag.fileParam())) {
-                resolvedImage = resolveImage(images, resolver, tag.fileParam());
-            } else {
-                throw new RuntimeException("Image does not exist or is not a file: " + imagePath + " (looked up at "
-                        + dir + ")");
-            }
-        } else {
-            throw new RuntimeException(
-                    "Cannot refer to relative files from template when we do not know the template basePath: "
-                            + templateName);
-        }
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debugf(" Found image tag for image: %s", imagePath);
-        }
-        ImagesBuilder.AddImageResult collectedImageResult = images.builder().addImage(resolvedImage);
-        final ScannedImageTag imageTag = images.builder().scannedImageTag(tag.section().getOrigin().getTemplateId(),
-                tag.fileParam(),
-                tag.presetName(),
-                tag.presetConfig(),
-                collectedImageResult.image());
-        final Map<GeneratedImage, Path> generatedImages = converter.processImage(imageTag, resolvedImage,
-                collectedImageResult.image(), targetDist);
-        for (Map.Entry<GeneratedImage, Path> e : generatedImages.entrySet()) {
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.tracef("Generated '%s' (%s)", e.getValue(),
-                        e.getKey());
-            }
-            staticResourceProducer.produce(new GeneratedStaticResourceBuildItem(
-                    e.getKey().outputPath(),
-                    e.getValue()));
-        }
-
-    }
-
     private static ResolvedSourceImage resolveFromImagesDir(ImagesBuildItem images,
-            List<ImagesDirBuildItem> imagesDirs,
-            String path) {
-        final String relativePath = path.substring(1);
+            List<ImagesDirBuildItem> imagesDirs, String path) {
         for (ImagesDirBuildItem dir : imagesDirs) {
             ImagesDirResolver resolver = ImagesDirResolver.of(dir);
             if (resolver.exists(path)) {
@@ -177,11 +195,10 @@ public class QuteImageProcessor {
         final List<String> sources = imagesDirs.stream().map(ImagesDirBuildItem::dir)
                 .map(ImagesDir::toString).toList();
         throw new RuntimeException(
-                "Image does not exist or is not a file: " + relativePath + " (looked up at " + sources + ")");
+                "Image does not exist or is not a file: " + path.substring(1) + " (looked up at " + sources + ")");
     }
 
-    private static ResolvedSourceImage resolveImage(ImagesBuildItem images, ImagesDirResolver resolver,
-            String path) {
+    private static ResolvedSourceImage resolveImage(ImagesBuildItem images, ImagesDirResolver resolver, String path) {
         final byte[] contents = resolver.readFile(path);
         final String normalized = resolver.normalizedPath(path);
         final String name = resolver.name(path);
