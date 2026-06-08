@@ -87,15 +87,17 @@ public class QuteImageScanProcessor {
                 if (!(literal instanceof String file)) {
                     throw new RuntimeException("Invalid image literal: " + literal + " (must be a string literal)");
                 }
+                String presetName = "default";
                 PresetConfig presetConfig = PresetConfig.DEFAULT;
                 if (presetExpr != null && presetExpr.isLiteral()
-                        && presetExpr.getLiteral() instanceof String presetName) {
-                    PresetConfig resolved = config.presets().get(presetName);
+                        && presetExpr.getLiteral() instanceof String pName) {
+                    presetName = pName;
+                    PresetConfig resolved = config.presets().get(pName);
                     if (resolved != null) {
                         presetConfig = resolved;
                     }
                 }
-                return new ImageTagSection((SectionNode) sectionNode, file, presetConfig);
+                return new ImageTagSection((SectionNode) sectionNode, file, presetName, presetConfig);
             } else {
                 throw new RuntimeException(
                         "Invalid image parameter list: " + parameters + " ('src' is required)");

@@ -53,7 +53,17 @@ public interface PresetConfig {
      */
     Optional<PixelRatio> pixelRatio();
 
-    record Crop(String ratio, Keep keep) {
+    interface Crop {
+        /**
+         * Aspect ratio for cropping (e.g., "16:9", "1:1", "4:3").
+         */
+        String ratio();
+
+        /**
+         * Which part of the image to keep when cropping.
+         */
+        @WithDefault("center")
+        Keep keep();
     }
 
     enum Keep {
@@ -66,6 +76,20 @@ public interface PresetConfig {
         HIGH,
     }
 
-    record PixelRatio(int baseWidth, int fallbackWidth, List<Double> ratios) {
+    interface PixelRatio {
+        /**
+         * Base width in pixels for the 1x variant.
+         */
+        int baseWidth();
+
+        /**
+         * Width of the fallback image (used in the src attribute).
+         */
+        int fallbackWidth();
+
+        /**
+         * Pixel density multipliers (e.g., 1, 1.5, 2).
+         */
+        List<Double> ratios();
     }
 }

@@ -147,20 +147,19 @@ public class QuteImageProcessor {
         ImagesBuilder.AddImageResult collectedImageResult = images.builder().addImage(resolvedImage);
         final ScannedImageTag imageTag = images.builder().scannedImageTag(tag.section().getOrigin().getTemplateId(),
                 tag.fileParam(),
+                tag.presetName(),
                 tag.presetConfig(),
                 collectedImageResult.image());
-        if (collectedImageResult.created()) {
-            final Map<GeneratedImage, Path> generatedImages = converter.processImage(imageTag, resolvedImage,
-                    collectedImageResult.image(), targetDist);
-            for (Map.Entry<GeneratedImage, Path> e : generatedImages.entrySet()) {
-                if (LOGGER.isTraceEnabled()) {
-                    LOGGER.tracef("Generated '%s' (%s)", e.getValue(),
-                            e.getKey());
-                }
-                staticResourceProducer.produce(new GeneratedStaticResourceBuildItem(
-                        e.getKey().outputPath(),
-                        e.getValue()));
+        final Map<GeneratedImage, Path> generatedImages = converter.processImage(imageTag, resolvedImage,
+                collectedImageResult.image(), targetDist);
+        for (Map.Entry<GeneratedImage, Path> e : generatedImages.entrySet()) {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.tracef("Generated '%s' (%s)", e.getValue(),
+                        e.getKey());
             }
+            staticResourceProducer.produce(new GeneratedStaticResourceBuildItem(
+                    e.getKey().outputPath(),
+                    e.getValue()));
         }
 
     }

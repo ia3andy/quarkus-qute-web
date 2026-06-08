@@ -2,15 +2,20 @@ package io.quarkiverse.qute.web.image.deployment.deployment;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Function;
+
+import javax.imageio.ImageIO;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -71,13 +76,6 @@ public class QuteImageTest {
             context.produce(
                     ImagesDirBuildItem.localDir(java.nio.file.Path.of("target/test-classes/roq-public")));
         }
-
-        private static class Mapper implements Function<String, String> {
-            @Override
-            public String apply(String s) {
-                return s.replace('é', '-').toLowerCase();
-            }
-        }
     }
 
     public static class Customiser implements Consumer<BuildChainBuilder> {
@@ -92,47 +90,92 @@ public class QuteImageTest {
     }
 
     @Test
-    public void testImageQuteWeb() {
-
-        final String body = RestAssured.given()
-                .get("/images.html")
-                .then()
-                .statusCode(200)
-                .log()
-                .body()
-                .extract().body().asString();
-
-        Document doc = Jsoup.parse(body);
+    public void testDefaultAttributes() {
+        Document doc = fetchAndParse("/images.html");
         Elements imgs = doc.select("img");
-        assertThat(imgs, hasSize(2));
+        assertThat("should have 4 img elements", imgs, hasSize(4));
 
-        String[] urls = {
-                "/static/images/generated/1b139664/relative-1920-68cb06dc.jpg",
-                "/static/images/generated/1b139664/relative-1024-68cb06dc.jpg",
-                "/static/images/generated/1b139664/relative-640-68cb06dc.jpg"
-        };
-
-        checkImageSrc(imgs.get(0), urls);
-
-        String[] urls1 = {
-                "/static/images/generated/1b139664/white_1920_1080-1920-7840f5f2.jpg",
-                "/static/images/generated/1b139664/white_1920_1080-1024-7840f5f2.jpg",
-                "/static/images/generated/1b139664/white_1920_1080-640-7840f5f2.jpg"
-        };
-        checkImageSrc(imgs.get(1), urls1);
-
-        for (String url : urls) {
-            RestAssured.given().get(url).then().statusCode(200);
-        }
-
+        Element defaultImg = imgs.get(0);
+        assertThat(defaultImg.attr("loading"), is("lazy"));
+        assertThat(defaultImg.attr("sizes"), is("auto"));
+        assertThat(defaultImg.attr("width"), is(not("")));
+        assertThat(defaultImg.attr("height"), is(not("")));
+        assertThat(Integer.parseInt(defaultImg.attr("width")), greaterThan(0));
+        assertThat(Integer.parseInt(defaultImg.attr("height")), greaterThan(0));
     }
 
-    private static void checkImageSrc(Element img, String[] urls) {
-        assertThat(img.attr("src"), is(urls[0]));
+    @Test
+    public void testSrcsetGeneration() {
+        Document doc = fetchAndParse("/images.html");
+        Elements imgs = doc.select("img");
+
+        Element img = imgs.get(0);
+        assertThat(img.attr("src"), containsString("/static/images/generated/"));
+        assertThat(img.attr("src"), containsString("-1920-"));
+
         String srcset = img.attr("srcset");
-        for (String entry : urls) {
-            assertThat(srcset, containsString(entry));
+        assertThat(srcset, containsString("640w"));
+        assertThat(srcset, containsString("1024w"));
+        assertThat(srcset, containsString("1920w"));
+    }
+
+    @Test
+    public void testCustomPreset() {
+        Document doc = fetchAndParse("/images.html");
+        Elements imgs = doc.select("img");
+
+        Element smallImg = imgs.get(2);
+        String srcset = smallImg.attr("srcset");
+        assertThat("small preset should have 320w", srcset, containsString("320w"));
+        assertThat("small preset should have 640w", srcset, containsString("640w"));
+        assertThat("small preset should NOT have 1024w", srcset, not(containsString("1024w")));
+        assertThat("small preset should NOT have 1920w", srcset, not(containsString("1920w")));
+    }
+
+    @Test
+    public void testTagLevelAttributes() {
+        Document doc = fetchAndParse("/images.html");
+        Elements imgs = doc.select("img");
+
+        Element withAttrs = imgs.get(2);
+        assertThat(withAttrs.attr("alt"), is("Small image"));
+        assertThat(withAttrs.attr("class"), is("thumb"));
+    }
+
+    @Test
+    public void testLoadingOverride() {
+        Document doc = fetchAndParse("/images.html");
+        Elements imgs = doc.select("img");
+
+        Element eagerImg = imgs.get(3);
+        assertThat("loading should be overridden to eager", eagerImg.attr("loading"), is("eager"));
+    }
+
+    @Test
+    public void testGeneratedImagesAccessible() {
+        Document doc = fetchAndParse("/images.html");
+        Elements imgs = doc.select("img");
+
+        for (Element img : imgs) {
+            String src = img.attr("src");
+            if (src.contains("/static/images/generated/")) {
+                RestAssured.given().get(src).then().statusCode(200);
+            }
         }
+    }
+
+    @Test
+    public void testGeneratedImageDimensions() throws IOException {
+        Document doc = fetchAndParse("/images.html");
+        Element img = doc.select("img").get(1);
+
+        String srcset = img.attr("srcset");
+        String smallUrl = extractUrlForWidth(srcset, "640w");
+        assertThat("should find 640w URL in srcset", smallUrl, is(not("")));
+
+        BufferedImage generated = fetchImage(smallUrl);
+        assertThat("generated image width should be 640", generated.getWidth(), is(640));
+        assertThat("generated image height should be proportional", generated.getHeight(), greaterThan(0));
     }
 
     @Test
@@ -140,8 +183,33 @@ public class QuteImageTest {
         RestAssured.given()
                 .get("/rest")
                 .then()
+                .statusCode(200);
+    }
+
+    private Document fetchAndParse(String path) {
+        String body = RestAssured.given()
+                .get(path)
+                .then()
                 .statusCode(200)
-                .log().body();
+                .extract().body().asString();
+        return Jsoup.parse(body);
+    }
+
+    private String extractUrlForWidth(String srcset, String widthDescriptor) {
+        for (String entry : srcset.split(",")) {
+            entry = entry.trim();
+            if (entry.endsWith(widthDescriptor)) {
+                return entry.substring(0, entry.length() - widthDescriptor.length()).trim();
+            }
+        }
+        return "";
+    }
+
+    private BufferedImage fetchImage(String url) throws IOException {
+        try (InputStream is = RestAssured.given().get(url).then().statusCode(200)
+                .extract().body().asInputStream()) {
+            return ImageIO.read(is);
+        }
     }
 
     @Path("/rest")

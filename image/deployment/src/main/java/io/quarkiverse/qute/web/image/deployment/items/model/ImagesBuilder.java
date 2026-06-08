@@ -90,10 +90,11 @@ public class ImagesBuilder {
 
     }
 
-    public ScannedImageTag scannedImageTag(String templateId, String declaredPath, PresetConfig config,
+    public ScannedImageTag scannedImageTag(String templateId, String declaredPath, String presetName,
+            PresetConfig config,
             ImageBuilder image) {
         final ScannedImageTag tag = new ScannedImageTag(templateId, declaredPath, config, image);
-        scannedImageTags.put(imageTagKey(templateId, declaredPath),
+        scannedImageTags.put(imageTagKey(templateId, declaredPath, presetName),
                 tag);
         return tag;
     }
