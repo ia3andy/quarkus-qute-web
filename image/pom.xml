@@ -19,6 +19,7 @@
     </properties>
     <modules>
         <module>spi</module>
+        <module>converter</module>
         <module>runtime</module>
         <module>deployment</module>
         <module>vips</module>

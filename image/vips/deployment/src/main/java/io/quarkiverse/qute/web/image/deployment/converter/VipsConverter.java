@@ -56,8 +56,9 @@ public class VipsConverter implements ImageConverter {
                                     if (LOGGER.isDebugEnabled()) {
                                         LOGGER.debugf("  Generating width: %s format: %s", dimension, format);
                                     }
-                                    int targetHeight = ImageIOConverter.computeTargetHeight(
-                                            dimension, info, imageTag.config().crop().orElse(null));
+                                    int targetHeight = io.quarkiverse.qute.web.image.converter.ImageSizing
+                                            .computeTargetHeight(dimension, info.width(), info.height(),
+                                                    imageTag.config().crop().map(c -> c.ratio()).orElse(null));
                                     imageBuilder.addGeneratedImage(
                                             new GeneratedImageOptions(dimension, targetHeight, format,
                                                     imageTag.config().crop().orElse(null), imageTag.config().quality()),
