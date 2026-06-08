@@ -56,8 +56,11 @@ public class VipsConverter implements ImageConverter {
                                     if (LOGGER.isDebugEnabled()) {
                                         LOGGER.debugf("  Generating width: %s format: %s", dimension, format);
                                     }
-                                    imageBuilder.addGeneratedImage(new GeneratedImageOptions(dimension, format,
-                                            imageTag.config().crop().orElse(null), imageTag.config().quality()),
+                                    int targetHeight = ImageIOConverter.computeTargetHeight(
+                                            dimension, info, imageTag.config().crop().orElse(null));
+                                    imageBuilder.addGeneratedImage(
+                                            new GeneratedImageOptions(dimension, targetHeight, format,
+                                                    imageTag.config().crop().orElse(null), imageTag.config().quality()),
                                             generatedImage -> {
                                                 final Path path = generateImage(arena, imageTag, image, format, dimension,
                                                         generatedImage,

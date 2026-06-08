@@ -1,7 +1,9 @@
 package io.quarkiverse.qute.web.image.runtime;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
 import jakarta.inject.Inject;
@@ -11,6 +13,8 @@ import io.quarkiverse.qute.web.image.runtime.model.Images;
 import io.quarkus.qute.Engine;
 import io.quarkus.qute.EngineConfiguration;
 import io.quarkus.qute.Expression;
+import io.quarkus.qute.Parameter;
+import io.quarkus.qute.RawString;
 import io.quarkus.qute.ResultNode;
 import io.quarkus.qute.Scope;
 import io.quarkus.qute.SectionHelper;
@@ -19,15 +23,15 @@ import io.quarkus.qute.SectionHelperFactory;
 @EngineConfiguration
 public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHelper> {
 
+    private static final Set<String> RESERVED_PARAMS = Set.of("src", "preset");
+
     @Inject
     Images images;
 
-    // Used by CDI for runtime and build-time validation (of runtime templates)
     public ImageSectionHelperFactory() {
         images = null;
     }
 
-    // Used for build-time templates
     public ImageSectionHelperFactory(Images images) {
         this.images = images;
     }
@@ -41,7 +45,8 @@ public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHe
     public ParametersInfo getParameters() {
         return ParametersInfo.builder()
                 .addParameter("src")
-                .addParameter("preset", "default")
+                .addParameter(Parameter.builder("preset").defaultValue("default").build())
+                .checkNumberOfParams(false)
                 .build();
     }
 
@@ -49,31 +54,46 @@ public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHe
     public Scope initializeBlock(Scope outerScope, BlockInfo block) {
         if (!block.getLabel().equals("$main")) {
             return outerScope;
-        } else {
-            for (Map.Entry<String, String> entry : block.getParameters().entrySet()) {
-                String key = entry.getKey();
-                String value = entry.getValue();
-                block.addExpression(key, value);
-            }
-
-            return outerScope;
         }
+        for (Map.Entry<String, String> entry : block.getParameters().entrySet()) {
+            block.addExpression(entry.getKey(), entry.getValue());
+        }
+        return outerScope;
     }
 
     @Override
     public SectionHelper initialize(SectionInitContext context) {
-        Map<String, Expression> expressions = Map.of(
-                "src", context.getExpression("src"));
+        Expression srcExpr = context.getExpression("src");
+        Map<String, Expression> attrExpressions = new HashMap<>();
+        for (String key : context.getParameters().keySet()) {
+            if (!RESERVED_PARAMS.contains(key)) {
+                attrExpressions.put(key, context.getExpression(key));
+            }
+        }
         final Engine engine = context.getEngine();
         return new SectionHelper() {
             @Override
             public CompletionStage<ResultNode> resolve(SectionResolutionContext context) {
-                return context.evaluate(expressions)
+                Map<String, Expression> toEval = new HashMap<>(attrExpressions);
+                toEval.put("src", srcExpr);
+                return context.evaluate(toEval)
                         .thenCompose(resolved -> {
-                            ImageTag imageTag = images.get(context.resolutionContext().getTemplate().getId(),
-                                    (String) resolved.get("src"));
+                            String src = (String) resolved.get("src");
+                            ImageTag imageTag = images.get(
+                                    context.resolutionContext().getTemplate().getId(), src);
+                            Map<String, String> attrs = new HashMap<>();
+                            for (Map.Entry<String, Object> entry : resolved.entrySet()) {
+                                if (!"src".equals(entry.getKey()) && entry.getValue() != null) {
+                                    attrs.put(entry.getKey(), entry.getValue().toString());
+                                }
+                            }
+                            ImageAttrs imageAttrs = ImageAttrs.from(attrs, imageTag);
+                            Map<String, Object> data = new HashMap<>();
+                            data.put("image", imageTag);
+                            data.put("imgAttrs", new RawString(imageAttrs.img()));
+                            data.put("pictureAttrs", new RawString(imageAttrs.picture()));
                             return engine.parse("{#include image.html /}").getRootNode()
-                                    .resolve(context.newResolutionContext(Map.of("image", imageTag), null));
+                                    .resolve(context.newResolutionContext(data, null));
                         });
             }
         };
