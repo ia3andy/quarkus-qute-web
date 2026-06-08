@@ -1,7 +1,6 @@
 package io.quarkiverse.qute.web.image.runtime;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 public record DefaultPresetConfig() implements PresetConfig {
@@ -12,16 +11,10 @@ public record DefaultPresetConfig() implements PresetConfig {
     }
 
     @Override
-    public List<String> linkedPresets() {
-        return List.of();
-    }
-
-    @Override
     public String fallbackFormat() {
         return "jpg";
     }
 
-    // From https://dev.to/razbakov/responsive-images-best-practices-in-2025-4dlb
     @Override
     public List<Integer> widths() {
         return List.of(640, 1024, 1920, 2560);
@@ -33,18 +26,8 @@ public record DefaultPresetConfig() implements PresetConfig {
     }
 
     @Override
-    public MarkupMode markup() {
-        return MarkupMode.AUTO;
-    }
-
-    @Override
-    public Boolean noscript() {
+    public boolean directUrl() {
         return false;
-    }
-
-    @Override
-    public Map<String, String> attributes() {
-        return Map.of();
     }
 
     @Override

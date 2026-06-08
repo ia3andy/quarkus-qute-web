@@ -21,9 +21,11 @@ import io.quarkiverse.qute.web.image.deployment.items.model.ImageBuilder;
 import io.quarkiverse.qute.web.image.deployment.items.model.ResolvedSourceImage;
 import io.quarkiverse.qute.web.image.deployment.items.model.ScannedImageTag;
 import io.quarkiverse.qute.web.image.runtime.ImageUtils;
+import io.quarkiverse.qute.web.image.runtime.PresetConfig;
 import io.quarkiverse.qute.web.image.runtime.model.GeneratedImage;
 import io.quarkiverse.qute.web.image.runtime.model.OriginalInfo;
 import net.coobird.thumbnailator.Thumbnails;
+import net.coobird.thumbnailator.geometry.Positions;
 
 public class ImageIOConverter implements ImageConverter {
     private static final Logger LOGGER = Logger.getLogger(ImageIOConverter.class);
@@ -47,6 +49,7 @@ public class ImageIOConverter implements ImageConverter {
             }
 
             final List<String> formats = imageTag.config().normalizedFormats();
+            final PresetConfig.Crop crop = imageTag.config().crop().orElse(null);
 
             for (String format : formats) {
                 for (int dimension : imageTag.config().widths()) {
@@ -54,10 +57,13 @@ public class ImageIOConverter implements ImageConverter {
                         if (LOGGER.isDebugEnabled()) {
                             LOGGER.debugf("  Generating width: %s format: %s", dimension, format);
                         }
-                        imageBuilder.addGeneratedImage(new GeneratedImageOptions(dimension, format,
-                                imageTag.config().crop().orElse(null), imageTag.config().quality()), generatedImage -> {
-                                    final Path path = generateImage(imageTag, image, format, dimension, generatedImage,
-                                            targetDist);
+                        int targetHeight = computeTargetHeight(dimension, info, crop);
+                        imageBuilder.addGeneratedImage(
+                                new GeneratedImageOptions(dimension, targetHeight, format, crop,
+                                        imageTag.config().quality()),
+                                generatedImage -> {
+                                    final Path path = generateImage(image, format, dimension, targetHeight, crop,
+                                            generatedImage, targetDist);
                                     images.put(generatedImage, path);
                                 });
 
@@ -75,27 +81,51 @@ public class ImageIOConverter implements ImageConverter {
         }
     }
 
-    private static Path generateImage(ScannedImageTag imageTag,
-            ReadImage image,
+    static int computeTargetHeight(int targetWidth, OriginalInfo info, PresetConfig.Crop crop) {
+        if (crop != null && crop.ratio() != null) {
+            String[] parts = crop.ratio().split(":");
+            if (parts.length == 2) {
+                double ratioW = Double.parseDouble(parts[0]);
+                double ratioH = Double.parseDouble(parts[1]);
+                return (int) Math.round(targetWidth * ratioH / ratioW);
+            }
+        }
+        return (int) Math.round((double) info.height() * targetWidth / info.width());
+    }
+
+    private static Path generateImage(ReadImage image,
             String format,
             int width,
+            int height,
+            PresetConfig.Crop crop,
             GeneratedImage generatedImage,
             Path targetDist) {
         try {
-            Path genetatedImagePath = ImageUtils.generatedImagePath(targetDist, generatedImage);
-            Files.createDirectories(genetatedImagePath.getParent());
-            Thumbnails.of(image.buffered())
-                    .size(width, image.buffered().getHeight())
-                    .outputFormat(ImageUtils.extensionFromFormat(format))
-                    .toFile(genetatedImagePath.toFile());
-            return genetatedImagePath;
+            Path generatedImagePath = ImageUtils.generatedImagePath(targetDist, generatedImage);
+            Files.createDirectories(generatedImagePath.getParent());
+            var builder = Thumbnails.of(image.buffered())
+                    .size(width, height)
+                    .outputFormat(ImageUtils.extensionFromFormat(format));
+            if (crop != null) {
+                builder.crop(toPosition(crop.keep()));
+            }
+            builder.toFile(generatedImagePath.toFile());
+            return generatedImagePath;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    private static Positions toPosition(PresetConfig.Keep keep) {
+        return switch (keep) {
+            case CENTER, ATTENTION, ENTROPY -> Positions.CENTER;
+            case LOW -> Positions.BOTTOM_CENTER;
+            case HIGH -> Positions.TOP_CENTER;
+            case NONE, ALL -> Positions.CENTER;
+        };
+    }
+
     private static ReadImage readImage(ResolvedSourceImage resolvedImage) throws IOException {
-        // Read image and detect format
         try (ImageInputStream imageInputStream = ImageIO
                 .createImageInputStream(new ByteArrayInputStream(resolvedImage.contents()))) {
             Iterator<ImageReader> imageReaders = ImageIO.getImageReaders(imageInputStream);

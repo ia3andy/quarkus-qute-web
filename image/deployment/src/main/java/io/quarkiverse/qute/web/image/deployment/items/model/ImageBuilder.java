@@ -30,8 +30,8 @@ public class ImageBuilder {
         generatedMap.computeIfAbsent(generatedKey, key -> {
             final String outputExt = ImageUtils.getOutputExt(id, options.format());
             final String outputPath = ImageUtils.computeOutputPath(id, options.width(), hash, outputExt);
-            final GeneratedImage generatedImage = new GeneratedImage(id, options.width(), options.format(),
-                    outputExt, hash, outputPath);
+            final GeneratedImage generatedImage = new GeneratedImage(id, options.width(), options.height(),
+                    options.format(), outputExt, hash, outputPath);
             consumer.accept(generatedImage);
             return generatedImage;
         });

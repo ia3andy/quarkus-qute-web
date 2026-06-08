@@ -6,6 +6,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -64,7 +65,7 @@ public class QuteImageScanProcessor {
             quteRuntimeTemplateBuildItemBuildProducer
                     .produce(new QuteImageTemplateToScanBuildItem(location,
                             analysis.findNodes(QuteImageScanProcessor::isImageSection).stream()
-                                    .map(imageTagSectionMapper(config)).toList(),
+                                    .map(imageTagSectionMapper(config)).filter(Objects::nonNull).toList(),
                             analysis.path));
         }
     }
@@ -79,20 +80,22 @@ public class QuteImageScanProcessor {
             if (parameters.containsKey("src")) {
                 Expression expr = parameters.get("src");
                 Expression presetExpr = parameters.get("preset");
-                if (expr.isLiteral()) {
-                    PresetConfig presetConfig = PresetConfig.DEFAULT;
-                    if (presetExpr.isLiteral() && expr.getLiteral() instanceof String preset) {
-                        presetConfig = config.presets().get(preset);
-                    }
-                    Object literal = expr.getLiteral();
-                    if (literal instanceof String file) {
-                        return new ImageTagSection((SectionNode) sectionNode, file, presetConfig);
-                    } else {
-                        throw new RuntimeException("Invalid image literal: " + literal + " (must be a string literal)");
-                    }
-                } else {
-                    throw new RuntimeException("Invalid image parameter 'src': " + expr + " (must be a string literal)");
+                if (!expr.isLiteral()) {
+                    return null;
                 }
+                Object literal = expr.getLiteral();
+                if (!(literal instanceof String file)) {
+                    throw new RuntimeException("Invalid image literal: " + literal + " (must be a string literal)");
+                }
+                PresetConfig presetConfig = PresetConfig.DEFAULT;
+                if (presetExpr != null && presetExpr.isLiteral()
+                        && presetExpr.getLiteral() instanceof String presetName) {
+                    PresetConfig resolved = config.presets().get(presetName);
+                    if (resolved != null) {
+                        presetConfig = resolved;
+                    }
+                }
+                return new ImageTagSection((SectionNode) sectionNode, file, presetConfig);
             } else {
                 throw new RuntimeException(
                         "Invalid image parameter list: " + parameters + " ('src' is required)");
