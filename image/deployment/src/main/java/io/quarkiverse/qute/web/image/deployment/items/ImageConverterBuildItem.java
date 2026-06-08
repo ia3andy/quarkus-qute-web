@@ -1,6 +1,6 @@
 package io.quarkiverse.qute.web.image.deployment.items;
 
-import io.quarkiverse.qute.web.image.deployment.converter.ImageConverter;
+import io.quarkiverse.qute.web.image.converter.ImageConverter;
 import io.quarkus.builder.item.SimpleBuildItem;
 
 public final class ImageConverterBuildItem extends SimpleBuildItem {
