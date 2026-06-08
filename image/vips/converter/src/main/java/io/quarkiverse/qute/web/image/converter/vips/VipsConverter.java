@@ -1,4 +1,4 @@
-package io.quarkiverse.qute.web.image.deployment.converter;
+package io.quarkiverse.qute.web.image.converter.vips;
 
 import java.io.IOException;
 import java.nio.file.Files;
