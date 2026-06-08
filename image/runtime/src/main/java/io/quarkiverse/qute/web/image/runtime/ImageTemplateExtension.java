@@ -34,7 +34,8 @@ public class ImageTemplateExtension {
         String fmt = singleFormat(it);
         if (fmt == null)
             return "";
-        return buildSrcset(it.image(), fmt, it.config().pixelRatio().orElse(null), it.image().info().format());
+        return buildSrcset(it.image(), fmt, it.config().pixelRatio().orElse(null), it.image().info().format(),
+                it.config().widths());
     }
 
     public static boolean hasImgSrcset(ImageTag it) {
@@ -49,7 +50,8 @@ public class ImageTemplateExtension {
         String originalFormat = it.image().info().format();
         List<Source> list = new ArrayList<>();
         for (String fmt : formats) {
-            String srcset = buildSrcset(it.image(), fmt, it.config().pixelRatio().orElse(null), originalFormat);
+            String srcset = buildSrcset(it.image(), fmt, it.config().pixelRatio().orElse(null), originalFormat,
+                    it.config().widths());
             if (!srcset.isBlank()) {
                 String type = format(fmt, originalFormat);
                 list.add(new Source(srcset, type));
@@ -58,9 +60,15 @@ public class ImageTemplateExtension {
         return list;
     }
 
-    private static String buildSrcset(Image img, String fmt, PresetConfig.PixelRatio pixelRatio, String originalFormat) {
+    private static String buildSrcset(Image img, String fmt, ResolvedPresetConfig.PixelRatioConfig pixelRatio,
+            String originalFormat,
+            List<Integer> presetWidths) {
+        var widthSet = presetWidths != null && !presetWidths.isEmpty()
+                ? new java.util.HashSet<>(presetWidths)
+                : null;
         List<GeneratedImage> candidates = img.generated().stream()
                 .filter(gi -> matchesFormat(gi, fmt, originalFormat))
+                .filter(gi -> widthSet == null || widthSet.contains(gi.width()))
                 .sorted(Comparator.comparingInt(GeneratedImage::width))
                 .toList();
 

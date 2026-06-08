@@ -15,8 +15,8 @@ public interface ImageUtils {
             "jpeg", "jpg",
             "tiff", "tif");
 
-    static String imageTagKey(String templateId, String declaredURI) {
-        return templateId + "|" + declaredURI;
+    static String imageTagKey(String templateId, String declaredURI, String preset) {
+        return templateId + "|" + declaredURI + "|" + preset;
     }
 
     static String normalizeFormat(String format) {

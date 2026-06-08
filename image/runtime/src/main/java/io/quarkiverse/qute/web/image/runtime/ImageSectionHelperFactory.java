@@ -45,7 +45,7 @@ public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHe
     public ParametersInfo getParameters() {
         return ParametersInfo.builder()
                 .addParameter("src")
-                .addParameter(Parameter.builder("preset").defaultValue("default").build())
+                .addParameter(Parameter.builder("preset").defaultValue("'default'").build())
                 .checkNumberOfParams(false)
                 .build();
     }
@@ -64,6 +64,7 @@ public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHe
     @Override
     public SectionHelper initialize(SectionInitContext context) {
         Expression srcExpr = context.getExpression("src");
+        Expression presetExpr = context.getExpression("preset");
         Map<String, Expression> attrExpressions = new HashMap<>();
         for (String key : context.getParameters().keySet()) {
             if (!RESERVED_PARAMS.contains(key)) {
@@ -76,14 +77,18 @@ public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHe
             public CompletionStage<ResultNode> resolve(SectionResolutionContext context) {
                 Map<String, Expression> toEval = new HashMap<>(attrExpressions);
                 toEval.put("src", srcExpr);
+                toEval.put("preset", presetExpr);
                 return context.evaluate(toEval)
                         .thenCompose(resolved -> {
                             String src = (String) resolved.get("src");
+                            String preset = resolved.get("preset") != null
+                                    ? resolved.get("preset").toString()
+                                    : "default";
                             ImageTag imageTag = images.get(
-                                    context.resolutionContext().getTemplate().getId(), src);
+                                    context.resolutionContext().getTemplate().getId(), src, preset);
                             Map<String, String> attrs = new HashMap<>();
                             for (Map.Entry<String, Object> entry : resolved.entrySet()) {
-                                if (!"src".equals(entry.getKey()) && entry.getValue() != null) {
+                                if (!RESERVED_PARAMS.contains(entry.getKey()) && entry.getValue() != null) {
                                     attrs.put(entry.getKey(), entry.getValue().toString());
                                 }
                             }

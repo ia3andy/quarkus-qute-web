@@ -1,12 +1,7 @@
 package io.quarkiverse.qute.web.image.runtime.model;
 
-import io.quarkiverse.qute.web.image.runtime.PresetConfig;
+import io.quarkiverse.qute.web.image.runtime.ResolvedPresetConfig;
 
-/**
- * This represents an image tag, pointing to a processed image
- */
-public record ImageTag(String templateId, String declaredPath, PresetConfig config,
+public record ImageTag(String templateId, String declaredPath, ResolvedPresetConfig config,
         Image image) {
-    // Eventually, this will list the variants in use
-
 }

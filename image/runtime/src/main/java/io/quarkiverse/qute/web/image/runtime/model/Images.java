@@ -24,8 +24,8 @@ public class Images {
         return images.get(path);
     }
 
-    public ImageTag get(String templateId, String declaredURI) {
-        return tags.get(imageTagKey(templateId, declaredURI));
+    public ImageTag get(String templateId, String declaredURI, String preset) {
+        return tags.get(imageTagKey(templateId, declaredURI, preset));
     }
 
 }

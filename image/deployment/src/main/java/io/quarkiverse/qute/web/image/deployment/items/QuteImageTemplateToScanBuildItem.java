@@ -28,7 +28,7 @@ public final class QuteImageTemplateToScanBuildItem extends MultiBuildItem {
         this.id = id;
     }
 
-    public record ImageTagSection(SectionNode section, String fileParam, PresetConfig presetConfig) {
+    public record ImageTagSection(SectionNode section, String fileParam, String presetName, PresetConfig presetConfig) {
         public boolean isAbsolute() {
             return fileParam.startsWith("/");
         }
