@@ -26,7 +26,7 @@ public class VipsProcessor {
             return null;
         }
         autoDetectLibVips();
-        return new ImageConverterBuildItem(new VipsConverter());
+        return new ImageConverterBuildItem(new io.quarkiverse.qute.web.image.converter.vips.VipsConverter());
     }
 
     static void autoDetectLibVips() {
