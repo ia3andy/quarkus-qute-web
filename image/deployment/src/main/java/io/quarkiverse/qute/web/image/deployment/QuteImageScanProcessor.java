@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -70,19 +69,6 @@ public class QuteImageScanProcessor {
         }
     }
 
-    private static Path resolveSourcePath(QuteImageTemplateToScanBuildItem template) {
-        if (template == null || template.location == null) {
-            return null;
-        }
-        if (template.location.getScheme() == null) {
-            URI baseUri = Paths.get("").toAbsolutePath().toUri();
-            return Paths.get(baseUri.resolve(template.location));
-        }
-        if ("file".equalsIgnoreCase(template.location.getScheme()))
-            return Paths.get(template.location);
-        return null;
-    }
-
     private static Function<TemplateNode, ImageTagSection> imageTagSectionMapper(ImageConfig config) {
         return sectionNode -> {
             final List<SectionBlock> blocks = sectionNode.asSection().getBlocks();
@@ -125,18 +111,5 @@ public class QuteImageScanProcessor {
     private static boolean isImageSection(TemplateNode templateNode) {
         return templateNode.isSection() && "image".equals(templateNode.asSection().getName());
     }
-
-    // Kept in case we need it later
-    //    private void findTemplatePath(String basePath, List<TemplatePathBuildItem> tp) {
-    //        System.err.println("Looking for template " + basePath);
-    //        for (TemplatePathBuildItem templatePathBuildItem : tp) {
-    //            //            System.err.println(" Looking at " + templatePathBuildItem.getPath());
-    //            if (basePath.equals(templatePathBuildItem.getPath())) {
-    //                System.err.println("  Full basePath: " + templatePathBuildItem.getFullPath());
-    //                return;
-    //            }
-    //        }
-    //        System.err.println(" Not Found");
-    //    }
 
 }

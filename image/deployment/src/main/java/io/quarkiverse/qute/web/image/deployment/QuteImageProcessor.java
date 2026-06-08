@@ -128,7 +128,6 @@ public class QuteImageProcessor {
             resolvedImage = resolveFromImagesDir(images, imageDirs,
                     tag.fileParam());
         } else if (templatePath != null) {
-            // TODO see how resources basePath are handled
             final ImagesDirBuildItem dir = ImagesDirBuildItem.localDir(templatePath.getParent());
             final ImagesDirResolver resolver = ImagesDirResolver.of(dir);
             if (resolver.exists(tag.fileParam())) {
@@ -180,13 +179,6 @@ public class QuteImageProcessor {
                 .map(ImagesDir::toString).toList();
         throw new RuntimeException(
                 "Image does not exist or is not a file: " + relativePath + " (looked up at " + sources + ")");
-    }
-
-    private static void checkParentDir(Path parentDir, Path resolvedImagePath) {
-        if (!resolvedImagePath.normalize().startsWith(parentDir.normalize())) {
-            throw new RuntimeException("Relative image basePath outside parent directory: '%s' (parent: '%s') "
-                    .formatted(resolvedImagePath.normalize(), parentDir.normalize()));
-        }
     }
 
     private static ResolvedSourceImage resolveImage(ImagesBuildItem images, ImagesDirResolver resolver,

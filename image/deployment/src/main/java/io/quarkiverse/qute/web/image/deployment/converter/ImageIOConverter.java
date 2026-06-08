@@ -86,7 +86,7 @@ public class ImageIOConverter implements ImageConverter {
             Files.createDirectories(genetatedImagePath.getParent());
             Thumbnails.of(image.buffered())
                     .size(width, image.buffered().getHeight())
-                    .outputFormat(format)
+                    .outputFormat(ImageUtils.extensionFromFormat(format))
                     .toFile(genetatedImagePath.toFile());
             return genetatedImagePath;
         } catch (IOException e) {

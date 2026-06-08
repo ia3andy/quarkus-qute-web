@@ -29,9 +29,9 @@ public class VipsConverter implements ImageConverter {
 
     @Override
     public Map<GeneratedImage, Path> processImage(ScannedImageTag imageTag,
-                                                  ResolvedSourceImage resolvedImage,
-                                                  ImageBuilder imageBuilder,
-                                                  Path targetDist) {
+            ResolvedSourceImage resolvedImage,
+            ImageBuilder imageBuilder,
+            Path targetDist) {
         final Map<GeneratedImage, Path> images = new HashMap<>();
         Vips.run(
                 arena -> {
@@ -57,11 +57,13 @@ public class VipsConverter implements ImageConverter {
                                         LOGGER.debugf("  Generating width: %s format: %s", dimension, format);
                                     }
                                     imageBuilder.addGeneratedImage(new GeneratedImageOptions(dimension, format,
-                                            imageTag.config().crop().orElse(null), imageTag.config().quality()), generatedImage -> {
-                                        final Path path = generateImage(arena, imageTag, image, format, dimension, generatedImage,
-                                                targetDist);
-                                        images.put(generatedImage, path);
-                                    });
+                                            imageTag.config().crop().orElse(null), imageTag.config().quality()),
+                                            generatedImage -> {
+                                                final Path path = generateImage(arena, imageTag, image, format, dimension,
+                                                        generatedImage,
+                                                        targetDist);
+                                                images.put(generatedImage, path);
+                                            });
 
                                 } else {
                                     if (LOGGER.isDebugEnabled()) {
@@ -71,12 +73,10 @@ public class VipsConverter implements ImageConverter {
                             }
                         }
 
-
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 });
-        Vips.shutdown();
         return images;
     }
 
@@ -86,44 +86,39 @@ public class VipsConverter implements ImageConverter {
     }
 
     private static Path generateImage(Arena arena, ScannedImageTag imageTag,
-                                      ReadImage image,
-                                      String format,
-                                      int width,
-                                      GeneratedImage generatedImage,
-                                      Path targetDist) {
+            ReadImage image,
+            String format,
+            int width,
+            GeneratedImage generatedImage,
+            Path targetDist) {
         try {
-            Path genetatedImagePath = ImageUtils.generatedImagePath(targetDist, generatedImage);
-            Files.createDirectories(genetatedImagePath.getParent());
+            Path generatedImagePath = ImageUtils.generatedImagePath(targetDist, generatedImage);
+            Files.createDirectories(generatedImagePath.getParent());
 
-            // Convert to array
-            VipsOption[] args = applyPreset(imageTag.config(), width, format);
-
-            // Generate thumbnail
-            image.buffered().writeToFile(genetatedImagePath.toAbsolutePath().toString(), args);
-            return genetatedImagePath;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            VImage resized = image.buffered().thumbnailImage(width,
+                    thumbnailOptions(imageTag.config()));
+            resized.writeToFile(generatedImagePath.toAbsolutePath().toString(),
+                    writeOptions(imageTag.config()));
+            return generatedImagePath;
+        } catch (IOException | VipsError e) {
+            throw new RuntimeException("Failed to generate image: " + generatedImage.outputPath(), e);
         }
     }
 
-    private static VipsOption[] applyPreset(PresetConfig preset, int targetWidth, String format) throws VipsError {
+    private static VipsOption[] thumbnailOptions(PresetConfig preset) {
         var opts = new ArrayList<VipsOption>();
-
-        // Quality (Q is encoder's quality option for webp/jpg)
-        if (preset.quality() != null) {
-            opts.add(VipsOption.Int("Q", preset.quality()));
-        }
-
-        // Crop mapping: keep -> VipsInteresting
         preset.crop().map(VipsConverter::getInteresting).ifPresent(c -> {
             opts.add(VipsOption.Enum("crop", c));
         });
+        opts.add(VipsOption.Boolean("no-rotate", false));
+        return opts.toArray(new VipsOption[0]);
+    }
 
-        // Optional: respect EXIF orientation
-        opts.add(VipsOption.Boolean("auto-rotate", true));
-
-        opts.add(VipsOption.String("output-profile", format));
-
+    private static VipsOption[] writeOptions(PresetConfig preset) {
+        var opts = new ArrayList<VipsOption>();
+        if (preset.quality() != null) {
+            opts.add(VipsOption.Int("Q", preset.quality()));
+        }
         return opts.toArray(new VipsOption[0]);
     }
 
@@ -140,15 +135,6 @@ public class VipsConverter implements ImageConverter {
             case LOW -> VipsInteresting.INTERESTING_LOW;
             case HIGH -> VipsInteresting.INTERESTING_HIGH;
         };
-    }
-
-    // For pixelRatio presets: derive widths from base * ratios
-    public static List<Integer> widthsFromPixelRatio(PresetConfig.PixelRatio pr) {
-        return pr.ratios().stream()
-                .map(r -> (int) Math.round(pr.baseWidth() * r))
-                .distinct()
-                .sorted()
-                .toList();
     }
 
 }
