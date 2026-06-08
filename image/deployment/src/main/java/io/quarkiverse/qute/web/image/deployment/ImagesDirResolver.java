@@ -114,7 +114,12 @@ public sealed interface ImagesDirResolver {
                     throw new RuntimeException("Failed to read image " + resourcePath + " from the classpath", e);
                 }
             });
-            return image.get();
+            final byte[] result = image.get();
+            if (result == null) {
+                throw new RuntimeException(
+                        "Image resource reported as present but could not be read: " + resourcePath);
+            }
+            return result;
         }
 
         @Override
