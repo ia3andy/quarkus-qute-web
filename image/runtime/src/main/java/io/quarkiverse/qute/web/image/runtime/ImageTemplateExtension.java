@@ -23,7 +23,7 @@ public class ImageTemplateExtension {
     }
 
     public static String imgSrc(ImageTag it) {
-        return selectBest(it.image(), it.config().fallbackFormat(), it.image().info().format());
+        return selectBest(it.image(), it.config().fallbackFormat(), it.image().info().format(), it.config().widths());
     }
 
     public static String directUrl(ImageTag it) {
@@ -91,12 +91,17 @@ public class ImageTemplateExtension {
         }
     }
 
-    private static String selectBest(Image img, String desiredFmt, String originalFormat) {
+    private static String selectBest(Image img, String desiredFmt, String originalFormat, List<Integer> presetWidths) {
+        var widthSet = presetWidths != null && !presetWidths.isEmpty()
+                ? new java.util.HashSet<>(presetWidths)
+                : null;
         return img.generated().stream()
                 .filter(gi -> matchesFormat(gi, desiredFmt, originalFormat))
+                .filter(gi -> widthSet == null || widthSet.contains(gi.width()))
                 .max(Comparator.comparingInt(GeneratedImage::width))
                 .map(GeneratedImage::outputPath)
                 .orElseGet(() -> img.generated().stream()
+                        .filter(gi -> widthSet == null || widthSet.contains(gi.width()))
                         .max(Comparator.comparingInt(GeneratedImage::width))
                         .map(GeneratedImage::outputPath)
                         .orElse(""));
