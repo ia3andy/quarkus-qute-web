@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import jakarta.inject.Inject;
@@ -19,6 +20,7 @@ import io.quarkus.qute.ResultNode;
 import io.quarkus.qute.Scope;
 import io.quarkus.qute.SectionHelper;
 import io.quarkus.qute.SectionHelperFactory;
+import io.quarkus.qute.SingleResultNode;
 
 @EngineConfiguration
 public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHelper> {
@@ -92,6 +94,9 @@ public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHe
                                     attrs.put(entry.getKey(), entry.getValue().toString());
                                 }
                             }
+                            if (imageTag == null) {
+                                return fallbackImg(src, attrs);
+                            }
                             ImageAttrs imageAttrs = ImageAttrs.from(attrs, imageTag);
                             Map<String, Object> data = new HashMap<>();
                             data.put("image", imageTag);
@@ -102,5 +107,14 @@ public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHe
                         });
             }
         };
+    }
+
+    private static CompletionStage<ResultNode> fallbackImg(String src, Map<String, String> attrs) {
+        StringBuilder sb = new StringBuilder("<img src=\"").append(src).append('"');
+        for (Map.Entry<String, String> entry : attrs.entrySet()) {
+            sb.append(' ').append(entry.getKey()).append("=\"").append(entry.getValue()).append('"');
+        }
+        sb.append('>');
+        return CompletableFuture.completedFuture(new SingleResultNode(new RawString(sb.toString())));
     }
 }

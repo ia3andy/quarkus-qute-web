@@ -16,6 +16,7 @@
         <thumbnailator.version>0.4.21</thumbnailator.version>
         <maven.compiler.release>21</maven.compiler.release>
         <quarkus-web-bundler.version>2.3.2</quarkus-web-bundler.version>
+        <quarkus-project-scanner.version>2.3.2</quarkus-project-scanner.version>
     </properties>
     <modules>
         <module>spi</module>
