@@ -1,6 +1,8 @@
 package io.quarkiverse.qute.web.image.runtime;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
@@ -16,4 +18,24 @@ public interface ImageConfig {
      */
     Map<String, PresetConfig> presets();
 
+    /**
+     * Glob patterns for bulk image pre-processing at build time.
+     * Matched images are processed with the specified presets even if not
+     * directly referenced in a template.
+     */
+    Optional<List<GeneratePattern>> generate();
+
+    interface GeneratePattern {
+        /**
+         * Glob pattern to match image files (e.g., "**&#47;*.jpg", "content/posts/**").
+         * Matched against the scoped path within image directories.
+         */
+        String glob();
+
+        /**
+         * Preset names to apply to matched images.
+         * References entries from the presets map.
+         */
+        List<String> presets();
+    }
 }

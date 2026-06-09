@@ -8,9 +8,7 @@ import static org.hamcrest.Matchers.is;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -26,7 +24,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkiverse.qute.web.image.spi.items.ImagesDirBuildItem;
-import io.quarkus.bootstrap.classloading.QuarkusClassLoader;
 import io.quarkus.builder.BuildChainBuilder;
 import io.quarkus.builder.BuildContext;
 import io.quarkus.builder.BuildStep;
@@ -63,20 +60,9 @@ public class QuteVipsImageTest {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            context.produce(ImagesDirBuildItem.resource("/web"));
-            AtomicReference<java.nio.file.Path> root = new AtomicReference<>();
-            QuarkusClassLoader.visitRuntimeResources("web/static/images/white_1920_1080.png", p -> {
-                root.set(p.getRoot());
-            });
+            context.produce(ImagesDirBuildItem.of("web"));
             context.produce(
-                    ImagesDirBuildItem.localDir(java.nio.file.Path.of("target/test-classes/roq-public")));
-        }
-
-        private static class Mapper implements Function<String, String> {
-            @Override
-            public String apply(String s) {
-                return s.replace('é', '-').toLowerCase();
-            }
+                    ImagesDirBuildItem.of("roq-public", java.nio.file.Path.of("target/test-classes/roq-public")));
         }
     }
 

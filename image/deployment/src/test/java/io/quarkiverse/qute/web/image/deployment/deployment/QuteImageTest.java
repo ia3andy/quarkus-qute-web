@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import javax.imageio.ImageIO;
@@ -32,7 +31,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkiverse.qute.web.image.spi.items.ImagesDirBuildItem;
-import io.quarkus.bootstrap.classloading.QuarkusClassLoader;
 import io.quarkus.builder.BuildChainBuilder;
 import io.quarkus.builder.BuildContext;
 import io.quarkus.builder.BuildStep;
@@ -41,6 +39,7 @@ import io.quarkus.qute.Template;
 import io.quarkus.qute.deployment.TemplatePathBuildItem;
 import io.quarkus.test.QuarkusUnitTest;
 import io.restassured.RestAssured;
+import io.restassured.response.Response;
 
 public class QuteImageTest {
 
@@ -69,13 +68,9 @@ public class QuteImageTest {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            context.produce(ImagesDirBuildItem.resource("/web"));
-            AtomicReference<java.nio.file.Path> root = new AtomicReference<>();
-            QuarkusClassLoader.visitRuntimeResources("web/static/images/white_1920_1080.png", p -> {
-                root.set(p.getRoot());
-            });
+            context.produce(ImagesDirBuildItem.of("web"));
             context.produce(
-                    ImagesDirBuildItem.localDir(java.nio.file.Path.of("target/test-classes/roq-public")));
+                    ImagesDirBuildItem.of("roq-public", java.nio.file.Path.of("target/test-classes/roq-public")));
         }
     }
 
@@ -221,6 +216,30 @@ public class QuteImageTest {
                 .statusCode(200);
     }
 
+    @Test
+    public void testGlobPreProcessedImages() {
+        Response resp = RestAssured.given()
+                .get("/rest/dynamic?src=/static/images/white_1920_1080.png")
+                .then()
+                .statusCode(200)
+                .extract().response();
+        Document doc = Jsoup.parse(resp.body().asString());
+        Element img = doc.select("img").first();
+        assertThat("glob-processed image should have srcset", img.attr("srcset"), containsString("320w"));
+        assertThat("glob-processed image should have srcset", img.attr("srcset"), containsString("640w"));
+    }
+
+    @Test
+    public void testGracefulFallback() {
+        Response resp = RestAssured.given()
+                .get("/rest/dynamic?src=/unknown/image.jpg")
+                .then()
+                .statusCode(200)
+                .extract().response();
+        String body = resp.body().asString();
+        assertThat("fallback should produce plain img tag", body, containsString("<img src=\"/unknown/image.jpg\""));
+    }
+
     private Document fetchAndParse(String path) {
         String body = RestAssured.given()
                 .get(path)
@@ -263,9 +282,19 @@ public class QuteImageTest {
         @Location("index.html")
         Template index;
 
+        @Inject
+        @Location("dynamic.html")
+        Template dynamic;
+
         @GET
         public String get() {
             return index.instance().render();
+        }
+
+        @GET
+        @Path("/dynamic")
+        public String getDynamic(@jakarta.ws.rs.QueryParam("src") String src) {
+            return dynamic.data("imageSrc", src).render();
         }
     }
 }

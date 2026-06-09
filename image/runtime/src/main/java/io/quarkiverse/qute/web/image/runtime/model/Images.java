@@ -25,7 +25,11 @@ public class Images {
     }
 
     public ImageTag get(String templateId, String declaredURI, String preset) {
-        return tags.get(imageTagKey(templateId, declaredURI, preset));
+        ImageTag tag = tags.get(imageTagKey(templateId, declaredURI, preset));
+        if (tag == null) {
+            tag = tags.get(imageTagKey(null, declaredURI, preset));
+        }
+        return tag;
     }
 
 }
