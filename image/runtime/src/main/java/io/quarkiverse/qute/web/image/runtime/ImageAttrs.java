@@ -17,7 +17,7 @@ import io.quarkiverse.qute.web.image.runtime.model.ImageTag;
  * Also injects defaults: {@code loading="lazy"}, {@code sizes="auto"}, and {@code width}/{@code height}
  * for CLS prevention. Tag-level attributes override defaults.
  */
-public record ImageAttrs(String img, String picture) {
+public record ImageAttrs(Map<String, String> imgMap, Map<String, String> pictureMap) {
 
     private static final String IMG_PREFIX = "img-";
     private static final String PICTURE_PREFIX = "picture-";
@@ -55,22 +55,12 @@ public record ImageAttrs(String img, String picture) {
             }
         }
 
-        return new ImageAttrs(render(imgAttrs, parentAttrs), render(pictureAttrs, parentAttrs));
+        return new ImageAttrs(merge(imgAttrs, parentAttrs), merge(pictureAttrs, parentAttrs));
     }
 
-    private static String render(Map<String, String> targetAttrs, Map<String, String> parentAttrs) {
+    private static Map<String, String> merge(Map<String, String> targetAttrs, Map<String, String> parentAttrs) {
         Map<String, String> merged = new LinkedHashMap<>(parentAttrs);
         merged.putAll(targetAttrs);
-        if (merged.isEmpty()) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (Map.Entry<String, String> entry : merged.entrySet()) {
-            if (!sb.isEmpty()) {
-                sb.append(' ');
-            }
-            sb.append(entry.getKey()).append("=\"").append(entry.getValue()).append('"');
-        }
-        return sb.toString();
+        return merged;
     }
 }
