@@ -2,7 +2,6 @@ package io.quarkiverse.qute.web.image.runtime;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
@@ -23,7 +22,7 @@ public interface ImageConfig {
      * Matched images are processed with the specified presets even if not
      * directly referenced in a template.
      */
-    Optional<List<GeneratePattern>> generate();
+    List<GeneratePattern> generate();
 
     interface GeneratePattern {
         /**

@@ -84,7 +84,7 @@ public class QuteImageProcessor {
             QuteImageTargetDirBuildItem targetDir,
             List<ImagesDirBuildItem> imageSourceDirs,
             ProjectScannerBuildItem scanner) {
-        boolean hasGlobPatterns = imageConfig.generate().map(l -> !l.isEmpty()).orElse(false);
+        boolean hasGlobPatterns = !imageConfig.generate().isEmpty();
         if (templateToScan.isEmpty() && !hasGlobPatterns) {
             return null;
         }
@@ -116,7 +116,7 @@ public class QuteImageProcessor {
             List<ImagesDirBuildItem> imageSourceDirs, ProjectScannerBuildItem scanner,
             ImageConverter converter, BuildProducer<GeneratedStaticResourceBuildItem> staticResourceProducer,
             ImagesBuildItem images, Path targetDist) {
-        List<ImageConfig.GeneratePattern> patterns = imageConfig.generate().orElse(List.of());
+        List<ImageConfig.GeneratePattern> patterns = imageConfig.generate();
         for (ImageConfig.GeneratePattern pattern : patterns) {
             for (ImagesDirBuildItem dir : imageSourceDirs) {
                 String scope = scannerScope(dir);
@@ -129,9 +129,17 @@ public class QuteImageProcessor {
                 for (ProjectFile file : matched) {
                     String declaredPath = "/" + file.scopedPath();
                     for (String presetName : pattern.presets()) {
-                        PresetConfig preset = imageConfig.presets().get(presetName);
-                        if (preset == null) {
-                            preset = PresetConfig.DEFAULT;
+                        PresetConfig preset;
+                        if ("default".equals(presetName)) {
+                            preset = imageConfig.presets().getOrDefault(presetName, PresetConfig.DEFAULT);
+                        } else {
+                            preset = imageConfig.presets().get(presetName);
+                            if (preset == null) {
+                                throw new RuntimeException(
+                                        "Unknown preset '%s' in generate pattern (glob: %s). Available presets: %s"
+                                                .formatted(presetName, pattern.glob(),
+                                                        imageConfig.presets().keySet()));
+                            }
                         }
                         ResolvedSourceImage resolved = toResolvedImage(images, file, declaredPath);
                         if (LOGGER.isDebugEnabled()) {
@@ -277,9 +285,10 @@ public class QuteImageProcessor {
 
     private static ResolvedSourceImage resolveRelative(ImagesBuildItem images, Path parentDir, String relativePath) {
         Path resolved = parentDir.resolve(relativePath).normalize();
-        if (!resolved.normalize().startsWith(parentDir.normalize())) {
+        Path normalizedParent = parentDir.normalize();
+        if (!resolved.startsWith(normalizedParent)) {
             throw new RuntimeException("Relative image path outside parent directory: '%s' (parent: '%s') "
-                    .formatted(resolved.normalize(), parentDir.normalize()));
+                    .formatted(resolved, normalizedParent));
         }
         if (!Files.exists(resolved)) {
             throw new RuntimeException("Image does not exist or is not a file: " + relativePath
