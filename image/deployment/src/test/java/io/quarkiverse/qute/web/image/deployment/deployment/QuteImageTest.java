@@ -89,7 +89,7 @@ public class QuteImageTest {
     public void testDefaultAttributes() {
         Document doc = fetchAndParse("/images.html");
         Elements imgs = doc.select("img");
-        assertThat("should have 6 img elements", imgs, hasSize(6));
+        assertThat("should have 6 img elements (directUrl tag does not produce <img>)", imgs, hasSize(6));
 
         Element defaultImg = imgs.get(0);
         assertThat(defaultImg.attr("loading"), is("lazy"));
@@ -242,6 +242,35 @@ public class QuteImageTest {
         Element img = doc.select("img").first();
         assertThat("glob-processed image should have srcset", img.attr("srcset"), containsString("320w"));
         assertThat("glob-processed image should have srcset", img.attr("srcset"), containsString("640w"));
+    }
+
+    @Test
+    public void testGlobOnlyImage() {
+        // quadrants_400_200.png is template-scanned with 'retina' and 'square' presets,
+        // but the glob processes all PNGs with 'small'. The dynamic endpoint uses 'small',
+        // so this test verifies the glob-only processed entry is found at runtime.
+        Response resp = RestAssured.given()
+                .get("/rest/dynamic?src=/static/images/quadrants_400_200.png")
+                .then()
+                .statusCode(200)
+                .extract().response();
+        Document doc = Jsoup.parse(resp.body().asString());
+        Element img = doc.select("img").first();
+        String srcset = img.attr("srcset");
+        assertThat("glob-only image should have 320w from small preset", srcset, containsString("320w"));
+        assertThat("glob-only image should NOT have retina descriptors", srcset, not(containsString("x")));
+    }
+
+    @Test
+    public void testDirectUrlPreset() {
+        String body = RestAssured.given()
+                .get("/images.html")
+                .then()
+                .statusCode(200)
+                .extract().body().asString();
+        assertThat("directUrl should output a raw URL path", body, containsString("/static/images/generated/"));
+        assertThat("directUrl output should not be wrapped in <img>",
+                body, not(containsString("preset=\"url-only\"")));
     }
 
     @Test

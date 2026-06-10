@@ -2,13 +2,19 @@ package io.quarkiverse.qute.web.image.deployment.deployment;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
+
+import javax.imageio.ImageIO;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -78,56 +84,86 @@ public class QuteVipsImageTest {
     }
 
     @Test
-    public void testImageQuteWeb() {
+    public void testPictureWithWebp() {
+        Document doc = fetchAndParse("/images.html");
+        Elements pictures = doc.select("picture");
+        assertThat("default preset (webp+jpg) should produce picture elements", pictures.size(), greaterThan(0));
 
-        final String body = RestAssured.given()
-                .get("/images.html")
-                .then()
-                .statusCode(200)
-                .log()
-                .body()
-                .extract().body().asString();
+        Element picture = pictures.get(0);
+        Elements sources = picture.select("source");
+        assertThat("vips should produce multiple source elements (webp+jpg)", sources.size(), is(2));
 
-        Document doc = Jsoup.parse(body);
-        Elements imgs = doc.select("img");
-        assertThat(imgs, hasSize(2));
+        boolean hasWebp = sources.stream().anyMatch(s -> s.attr("type").contains("webp"));
+        boolean hasJpeg = sources.stream().anyMatch(s -> s.attr("type").contains("jpeg"));
+        assertThat("should have webp source", hasWebp, is(true));
+        assertThat("should have jpeg source", hasJpeg, is(true));
 
-        String[] urls = {
-                "/static/images/generated/1b139664/relative-1920-68cb06dc.jpg",
-                "/static/images/generated/1b139664/relative-1024-68cb06dc.jpg",
-                "/static/images/generated/1b139664/relative-640-68cb06dc.jpg"
-        };
-
-        checkImageSrc(imgs.get(0), urls);
-
-        String[] urls1 = {
-                "/static/images/generated/1b139664/white_1920_1080-1920-7840f5f2.jpg",
-                "/static/images/generated/1b139664/white_1920_1080-1024-7840f5f2.jpg",
-                "/static/images/generated/1b139664/white_1920_1080-640-7840f5f2.jpg"
-        };
-        checkImageSrc(imgs.get(1), urls1);
-
-        for (String url : urls) {
-            RestAssured.given().get(url).then().statusCode(200);
-        }
-
+        Element img = picture.select("img").first();
+        assertThat("img fallback src should use jpg", img.attr("src"), containsString(".jpg"));
     }
 
-    private static void checkImageSrc(Element img, String[] urls) {
-        assertThat(img.attr("src"), is(urls[0]));
-        String srcset = img.attr("srcset");
-        for (String entry : urls) {
-            assertThat(srcset, containsString(entry));
+    @Test
+    public void testCustomPreset() {
+        Document doc = fetchAndParse("/images.html");
+        Element smallImg = doc.select("img").get(2);
+        String srcset = smallImg.attr("srcset");
+        assertThat("small preset should have 320w", srcset, containsString("320w"));
+        assertThat("small preset should have 640w", srcset, containsString("640w"));
+        assertThat("small preset should NOT have 1024w", srcset, not(containsString("1024w")));
+    }
+
+    @Test
+    public void testCropDimensions() throws IOException {
+        Document doc = fetchAndParse("/images.html");
+        Element squareImg = doc.select("img").get(3);
+        String src = squareImg.attr("src");
+
+        BufferedImage cropped = fetchImage(src);
+        assertThat("cropped image should be 200px wide", cropped.getWidth(), is(200));
+        assertThat("cropped image should be square (200px tall)", cropped.getHeight(), is(200));
+    }
+
+    @Test
+    public void testGeneratedImagesAccessible() {
+        Document doc = fetchAndParse("/images.html");
+        for (Element img : doc.select("img")) {
+            String src = img.attr("src");
+            if (src.contains("/static/images/generated/")) {
+                RestAssured.given().get(src).then().statusCode(200);
+            }
+        }
+        for (Element source : doc.select("source")) {
+            for (String entry : source.attr("srcset").split(",")) {
+                String url = entry.trim().split("\\s")[0];
+                if (url.contains("/static/images/generated/")) {
+                    RestAssured.given().get(url).then().statusCode(200);
+                }
+            }
         }
     }
 
     @Test
-    public void testImageRunTime() {
+    public void testRoqTemplateRenders() {
         RestAssured.given()
                 .get("/rest")
                 .then()
+                .statusCode(200);
+    }
+
+    private Document fetchAndParse(String path) {
+        String body = RestAssured.given()
+                .get(path)
+                .then()
                 .statusCode(200)
-                .log().body();
+                .extract().body().asString();
+        return Jsoup.parse(body);
+    }
+
+    private BufferedImage fetchImage(String url) throws IOException {
+        try (InputStream is = RestAssured.given().get(url).then().statusCode(200)
+                .extract().body().asInputStream()) {
+            return ImageIO.read(is);
+        }
     }
 
     @Path("/rest")
