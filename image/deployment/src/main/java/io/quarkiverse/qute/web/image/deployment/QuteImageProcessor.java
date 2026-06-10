@@ -33,7 +33,9 @@ import io.quarkiverse.qute.web.image.runtime.ImageSectionHelperFactory;
 import io.quarkiverse.qute.web.image.runtime.ImageTemplateExtension;
 import io.quarkiverse.qute.web.image.runtime.ImageUtils;
 import io.quarkiverse.qute.web.image.runtime.PresetConfig;
+import io.quarkiverse.qute.web.image.runtime.model.Image;
 import io.quarkiverse.qute.web.image.runtime.model.ImageId;
+import io.quarkiverse.qute.web.image.runtime.model.ImageTag;
 import io.quarkiverse.qute.web.image.runtime.model.Images;
 import io.quarkiverse.qute.web.image.runtime.model.OriginalInfo;
 import io.quarkiverse.qute.web.image.spi.items.ImagesDirBuildItem;
@@ -54,9 +56,8 @@ public class QuteImageProcessor {
     private static final Logger LOGGER = Logger.getLogger(QuteImageProcessor.class);
 
     @BuildStep
-    void initBundleBean(
+    void initBeans(
             BuildProducer<AdditionalBeanBuildItem> additionalBeans) {
-        additionalBeans.produce(new AdditionalBeanBuildItem(Images.class));
         additionalBeans.produce(new AdditionalBeanBuildItem(ImageSectionHelperFactory.class));
         additionalBeans.produce(new AdditionalBeanBuildItem(ImageTemplateExtension.class));
     }
@@ -158,11 +159,10 @@ public class QuteImageProcessor {
     void recordImages(ImageRecorder imageRecorder,
             BuildProducer<SyntheticBeanBuildItem> syntheticBeanProducer,
             ImagesBuildItem images) {
-        if (images == null) {
-            return;
-        }
+        Map<String, ImageTag> tags = images != null ? images.builder().computeImageTags() : Map.of();
+        Map<String, Image> imageMap = images != null ? images.builder().computeImages() : Map.of();
         syntheticBeanProducer.produce(SyntheticBeanBuildItem.configure(Images.class)
-                .supplier(imageRecorder.imagesSupplier(images.builder().computeImageTags(), images.builder().computeImages()))
+                .supplier(imageRecorder.imagesSupplier(tags, imageMap))
                 .named("images")
                 .scope(Singleton.class)
                 .unremovable()

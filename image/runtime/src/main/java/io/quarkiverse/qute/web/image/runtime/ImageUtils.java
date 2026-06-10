@@ -15,8 +15,10 @@ public interface ImageUtils {
             "jpeg", "jpg",
             "tiff", "tif");
 
+    String GLOB_TEMPLATE_ID = "*";
+
     static String imageTagKey(String templateId, String declaredURI, String preset) {
-        return templateId + "|" + declaredURI + "|" + preset;
+        return (templateId != null ? templateId : GLOB_TEMPLATE_ID) + "|" + declaredURI + "|" + preset;
     }
 
     static String normalizeFormat(String format) {
