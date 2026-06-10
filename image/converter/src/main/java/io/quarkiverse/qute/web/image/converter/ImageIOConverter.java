@@ -5,7 +5,10 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -15,6 +18,15 @@ import net.coobird.thumbnailator.Thumbnails;
 import net.coobird.thumbnailator.geometry.Positions;
 
 public class ImageIOConverter implements ImageConverter {
+
+    private static final Set<String> SUPPORTED_WRITE_FORMATS = Arrays.stream(ImageIO.getWriterFormatNames())
+            .map(String::toLowerCase)
+            .collect(Collectors.toSet());
+
+    @Override
+    public boolean supportsFormat(String outputFormat) {
+        return SUPPORTED_WRITE_FORMATS.contains(outputFormat.toLowerCase());
+    }
 
     @Override
     public ImageInfo readInfo(byte[] sourceImage) {
@@ -33,7 +45,8 @@ public class ImageIOConverter implements ImageConverter {
             Files.createDirectories(outputPath.getParent());
             var builder = Thumbnails.of(result.image())
                     .size(options.width(), options.height())
-                    .outputFormat(options.outputFormat());
+                    .outputFormat(options.outputFormat())
+                    .outputQuality(options.quality() / 100.0);
             if (options.crop() != null) {
                 builder.crop(toPosition(options.crop().position()));
             }

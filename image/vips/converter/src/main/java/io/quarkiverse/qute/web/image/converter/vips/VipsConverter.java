@@ -49,6 +49,7 @@ public class VipsConverter implements ImageConverter {
     private static VipsOption[] thumbnailOptions(ImageOptions options) {
         var opts = new ArrayList<VipsOption>();
         if (options.crop() != null) {
+            opts.add(VipsOption.Int("height", options.height()));
             opts.add(VipsOption.Enum("crop", toCropInteresting(options.crop().position())));
         }
         opts.add(VipsOption.Boolean("no-rotate", false));

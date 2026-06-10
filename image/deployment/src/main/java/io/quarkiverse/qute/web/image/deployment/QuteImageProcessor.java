@@ -221,6 +221,13 @@ public class QuteImageProcessor {
         images.builder().scannedImageTag(templateId, declaredPath, presetName, preset, result.image());
 
         for (String format : preset.normalizedFormats()) {
+            String ext = ImageUtils.extensionFromFormat(format);
+            if (!converter.supportsFormat(ext)) {
+                LOGGER.warnf("Skipping format '%s': not supported by the active image converter."
+                        + " For webp/avif support, add the quarkus-qute-web-image-vips extension (requires libvips).",
+                        ext);
+                continue;
+            }
             for (int width : preset.widths()) {
                 if (info.width() < width) {
                     if (LOGGER.isDebugEnabled()) {
@@ -237,8 +244,7 @@ public class QuteImageProcessor {
                         new GeneratedImageOptions(width, height, format, crop, preset.quality()),
                         generatedImage -> {
                             Path outputPath = ImageUtils.generatedImagePath(targetDist, generatedImage);
-                            ImageOptions options = new ImageOptions(width, height,
-                                    ImageUtils.extensionFromFormat(format),
+                            ImageOptions options = new ImageOptions(width, height, ext,
                                     crop != null
                                             ? new ImageOptions.CropOptions(crop.ratio(), toCropPosition(crop.keep()))
                                             : null,
