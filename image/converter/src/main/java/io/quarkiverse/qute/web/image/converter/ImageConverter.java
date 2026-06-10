@@ -16,4 +16,11 @@ public interface ImageConverter {
      */
     Path process(byte[] sourceImage, ImageOptions options, Path outputPath);
 
+    /**
+     * Check if this converter supports writing the given output format (e.g. "jpg", "webp").
+     */
+    default boolean supportsFormat(String outputFormat) {
+        return true;
+    }
+
 }

@@ -99,12 +99,19 @@ public class QuteImageTest {
     }
 
     @Test
-    public void testSrcsetGeneration() {
+    public void testPictureElementWithSrcset() {
         Document doc = fetchAndParse("/images.html");
-        Element img = doc.select("img").get(0);
-        assertThat(img.attr("src"), containsString("/static/images/generated/"));
+        Elements pictures = doc.select("picture");
+        assertThat("default preset (webp+jpg) should produce picture elements", pictures.size(), greaterThan(0));
 
-        String srcset = img.attr("srcset");
+        Element picture = pictures.get(0);
+        Element img = picture.select("img").first();
+        assertThat(img.attr("src"), containsString("/static/images/generated/"));
+        assertThat("img fallback src should use jpg format", img.attr("src"), containsString(".jpg"));
+
+        Elements sources = picture.select("source");
+        assertThat("picture should have source elements", sources.size(), greaterThan(0));
+        String srcset = sources.get(0).attr("srcset");
         assertThat(srcset, containsString("640w"));
         assertThat(srcset, containsString("1024w"));
         assertThat(srcset, containsString("1920w"));
@@ -194,17 +201,25 @@ public class QuteImageTest {
                 RestAssured.given().get(src).then().statusCode(200);
             }
         }
+        for (Element source : doc.select("source")) {
+            for (String entry : source.attr("srcset").split(",")) {
+                String url = entry.trim().split("\\s")[0];
+                if (url.contains("/static/images/generated/")) {
+                    RestAssured.given().get(url).then().statusCode(200);
+                }
+            }
+        }
     }
 
     @Test
     public void testResizedImageDimensions() throws IOException {
         Document doc = fetchAndParse("/images.html");
-        Element img = doc.select("img").get(1);
+        Element img = doc.select("img").get(2);
         String srcset = img.attr("srcset");
-        String url640 = extractUrlForWidth(srcset, "640w");
+        String url320 = extractUrlForWidth(srcset, "320w");
 
-        BufferedImage generated = fetchImage(url640);
-        assertThat("resized image width should be 640", generated.getWidth(), is(640));
+        BufferedImage generated = fetchImage(url320);
+        assertThat("resized image width should be 320", generated.getWidth(), is(320));
         assertThat("resized image height should be proportional", generated.getHeight(), greaterThan(0));
     }
 
@@ -238,6 +253,8 @@ public class QuteImageTest {
                 .extract().response();
         String body = resp.body().asString();
         assertThat("fallback should produce plain img tag", body, containsString("<img src=\"/unknown/image.jpg\""));
+        assertThat("fallback should not have srcset", body, not(containsString("srcset")));
+        assertThat("fallback should not have picture element", body, not(containsString("<picture")));
     }
 
     private Document fetchAndParse(String path) {

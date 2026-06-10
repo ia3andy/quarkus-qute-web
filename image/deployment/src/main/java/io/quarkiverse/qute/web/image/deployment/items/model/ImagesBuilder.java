@@ -50,13 +50,15 @@ public class ImagesBuilder {
 
     public ImageId getImageId(String path, String fileName, byte[] content) {
         ImageId id = imageIdsByPath.get(path);
-        if (fileName.indexOf('.') <= 1) {
+        int dotIdx = fileName.lastIndexOf('.');
+        if (dotIdx <= 0) {
             throw new IllegalArgumentException("Invalid image file name: '%s'".formatted(path));
         }
-        String[] name = fileName.split("\\.");
         if (id == null) {
+            String baseName = fileName.substring(0, dotIdx);
+            String extension = fileName.substring(dotIdx + 1);
             String digest = digest(content);
-            id = new ImageId(digest, name[0], name[1]);
+            id = new ImageId(digest, baseName, extension);
             imageIdsByPath.put(path, id);
         }
         return id;

@@ -15,7 +15,7 @@ public record ResolvedPresetConfig(
         return new ResolvedPresetConfig(
                 config.formats(),
                 config.normalizedFormats(),
-                config.fallbackFormat(),
+                ImageUtils.normalizeFormat(config.fallbackFormat()),
                 config.widths(),
                 config.directUrl(),
                 config.pixelRatio().map(pr -> new PixelRatioConfig(pr.baseWidth(), pr.fallbackWidth(), pr.ratios())));

@@ -7,7 +7,7 @@ public record DefaultPresetConfig() implements PresetConfig {
 
     @Override
     public List<String> formats() {
-        return List.of("jpg");
+        return List.of("webp", "jpg");
     }
 
     @Override
@@ -22,7 +22,7 @@ public record DefaultPresetConfig() implements PresetConfig {
 
     @Override
     public Integer quality() {
-        return 80;
+        return 100;
     }
 
     @Override
