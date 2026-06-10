@@ -97,7 +97,7 @@ public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHe
                                 Map<String, Object> fallbackData = new HashMap<>();
                                 fallbackData.put("src", src);
                                 fallbackData.put("imgAttrs", new RawString(imageAttrs.img()));
-                                return engine.parse("<img src=\"{src}\" {imgAttrs}>")
+                                return engine.parse("{#include fallback-image.html /}")
                                         .getRootNode()
                                         .resolve(context.newResolutionContext(fallbackData, null));
                             }
