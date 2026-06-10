@@ -92,8 +92,15 @@ public class QuteImageScanProcessor {
                 if (presetExpr != null && presetExpr.isLiteral()
                         && presetExpr.getLiteral() instanceof String pName) {
                     presetName = pName;
-                    PresetConfig resolved = config.presets().get(pName);
-                    if (resolved != null) {
+                    if ("default".equals(pName)) {
+                        presetConfig = config.presets().getOrDefault(pName, PresetConfig.DEFAULT);
+                    } else {
+                        PresetConfig resolved = config.presets().get(pName);
+                        if (resolved == null) {
+                            throw new RuntimeException(
+                                    "Unknown preset '%s' in {#image} tag. Available presets: %s"
+                                            .formatted(pName, config.presets().keySet()));
+                        }
                         presetConfig = resolved;
                     }
                 }

@@ -6,6 +6,8 @@ import java.util.Map;
 
 import jakarta.enterprise.inject.Vetoed;
 
+import io.quarkiverse.qute.web.image.runtime.ImageUtils;
+
 @Vetoed
 public class Images {
 
@@ -27,7 +29,7 @@ public class Images {
     public ImageTag get(String templateId, String declaredURI, String preset) {
         ImageTag tag = tags.get(imageTagKey(templateId, declaredURI, preset));
         if (tag == null) {
-            tag = tags.get(imageTagKey(null, declaredURI, preset));
+            tag = tags.get(imageTagKey(ImageUtils.GLOB_TEMPLATE_ID, declaredURI, preset));
         }
         return tag;
     }

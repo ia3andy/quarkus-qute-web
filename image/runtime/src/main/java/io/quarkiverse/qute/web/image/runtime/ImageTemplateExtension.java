@@ -23,7 +23,8 @@ public class ImageTemplateExtension {
     }
 
     public static String imgSrc(ImageTag it) {
-        return selectBest(it.image(), it.config().fallbackFormat(), it.image().info().format(), it.config().widths());
+        return selectBest(it.image(), it.config().fallbackFormat(), it.image().info().format(), it.config().widths(),
+                it.declaredPath());
     }
 
     public static String directUrl(ImageTag it) {
@@ -91,7 +92,8 @@ public class ImageTemplateExtension {
         }
     }
 
-    private static String selectBest(Image img, String desiredFmt, String originalFormat, List<Integer> presetWidths) {
+    private static String selectBest(Image img, String desiredFmt, String originalFormat, List<Integer> presetWidths,
+            String declaredPath) {
         var widthSet = presetWidths != null && !presetWidths.isEmpty()
                 ? new java.util.HashSet<>(presetWidths)
                 : null;
@@ -104,7 +106,7 @@ public class ImageTemplateExtension {
                         .filter(gi -> widthSet == null || widthSet.contains(gi.width()))
                         .max(Comparator.comparingInt(GeneratedImage::width))
                         .map(GeneratedImage::outputPath)
-                        .orElse(""));
+                        .orElse(declaredPath));
     }
 
     private static boolean matchesFormat(GeneratedImage gi, String fmt, String originalFormat) {
