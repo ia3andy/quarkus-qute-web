@@ -14,16 +14,19 @@ import io.quarkus.qute.Engine;
 import io.quarkus.qute.EngineConfiguration;
 import io.quarkus.qute.Expression;
 import io.quarkus.qute.Parameter;
-import io.quarkus.qute.RawString;
 import io.quarkus.qute.ResultNode;
 import io.quarkus.qute.Scope;
 import io.quarkus.qute.SectionHelper;
 import io.quarkus.qute.SectionHelperFactory;
+import io.quarkus.qute.SectionNode;
+import io.quarkus.qute.Template;
 
 @EngineConfiguration
 public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHelper> {
 
     private static final Set<String> RESERVED_PARAMS = Set.of("src", "preset");
+    private static final String IMAGE_TEMPLATE = "qute-image/image.html";
+    private static final String FALLBACK_TEMPLATE = "qute-image/fallback-image.html";
 
     @Inject
     Images images;
@@ -72,6 +75,9 @@ public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHe
             }
         }
         final Engine engine = context.getEngine();
+        final SectionNode imageRoot = getTemplateRoot(engine, IMAGE_TEMPLATE);
+        final SectionNode fallbackRoot = getTemplateRoot(engine, FALLBACK_TEMPLATE);
+
         return new SectionHelper() {
             @Override
             public CompletionStage<ResultNode> resolve(SectionResolutionContext context) {
@@ -96,20 +102,26 @@ public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHe
                             if (imageTag == null) {
                                 Map<String, Object> fallbackData = new HashMap<>();
                                 fallbackData.put("src", src);
-                                fallbackData.put("imgAttrs", new RawString(imageAttrs.img()));
-                                return engine.parse("{#include fallback-image.html /}")
-                                        .getRootNode()
-                                        .resolve(context.newResolutionContext(fallbackData, null));
+                                fallbackData.put("imgAttrs", imageAttrs.imgMap());
+                                return fallbackRoot.resolve(
+                                        context.newResolutionContext(fallbackData, null));
                             }
                             Map<String, Object> data = new HashMap<>();
                             data.put("image", imageTag);
-                            data.put("imgAttrs", new RawString(imageAttrs.img()));
-                            data.put("pictureAttrs", new RawString(imageAttrs.picture()));
-                            return engine.parse("{#include image.html /}").getRootNode()
-                                    .resolve(context.newResolutionContext(data, null));
+                            data.put("imgAttrs", imageAttrs.imgMap());
+                            data.put("pictureAttrs", imageAttrs.pictureMap());
+                            return imageRoot.resolve(
+                                    context.newResolutionContext(data, null));
                         });
             }
         };
     }
 
+    private static SectionNode getTemplateRoot(Engine engine, String templateId) {
+        Template template = engine.getTemplate(templateId);
+        if (template == null) {
+            throw new IllegalStateException("Template not found: " + templateId);
+        }
+        return template.getRootNode();
+    }
 }
