@@ -6,10 +6,19 @@ import java.util.Map;
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
 
 @ConfigMapping(prefix = "quarkus.qute.image")
 @ConfigRoot(phase = ConfigPhase.BUILD_AND_RUN_TIME_FIXED)
 public interface ImageConfig {
+
+    /**
+     * When true, slugify the base filename in generated output paths
+     * (strip accents, lowercase, replace non-alphanumeric with dashes).
+     * Produces clean URLs for images with special characters.
+     */
+    @WithDefault("true")
+    boolean slugifyOutput();
 
     /**
      * Preset definitions.

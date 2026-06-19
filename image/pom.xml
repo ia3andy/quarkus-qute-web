@@ -24,6 +24,7 @@
         <module>runtime</module>
         <module>deployment</module>
         <module>vips</module>
+        <module>dynamic</module>
     </modules>
 
 </project>

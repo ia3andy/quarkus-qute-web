@@ -24,12 +24,13 @@ public class ImageBuilder {
         return generatedMap;
     }
 
-    public ImageBuilder addGeneratedImage(GeneratedImageOptions options, Consumer<GeneratedImage> consumer) {
+    public ImageBuilder addGeneratedImage(GeneratedImageOptions options, boolean slugifyOutput,
+            Consumer<GeneratedImage> consumer) {
         String hash = ImageUtils.digest("%s-%s".formatted(id.toString(), options.settings()));
         final String generatedKey = options.width() + "-" + hash;
         generatedMap.computeIfAbsent(generatedKey, key -> {
             final String outputExt = ImageUtils.getOutputExt(id, options.format());
-            final String outputPath = ImageUtils.computeOutputPath(id, options.width(), hash, outputExt);
+            final String outputPath = ImageUtils.computeOutputPath(id, options.width(), hash, outputExt, slugifyOutput);
             final GeneratedImage generatedImage = new GeneratedImage(id, options.width(), options.height(),
                     options.format(), outputExt, hash, outputPath);
             consumer.accept(generatedImage);

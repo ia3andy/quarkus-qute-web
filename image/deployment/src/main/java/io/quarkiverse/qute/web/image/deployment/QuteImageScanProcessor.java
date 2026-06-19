@@ -57,6 +57,9 @@ public class QuteImageScanProcessor {
         for (TemplatesAnalysisBuildItem.TemplateAnalysis analysis : templatesAnalysisBuildItem.getAnalysis()) {
             final URI location;
             final TemplatePathBuildItem templatePath = byId.get(analysis.path);
+            if (templatePath == null) {
+                continue;
+            }
             if (templatePath.getSource() == null && templatePath.getFullPath() != null) {
                 location = templatePath.getFullPath().toUri();
             } else {
