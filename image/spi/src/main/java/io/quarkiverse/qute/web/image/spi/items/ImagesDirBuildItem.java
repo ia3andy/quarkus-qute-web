@@ -11,10 +11,12 @@ import io.quarkus.builder.item.MultiBuildItem;
 public final class ImagesDirBuildItem extends MultiBuildItem {
 
     private final String prefix;
+    private final String urlPrefix;
     private final Path localPath;
 
-    private ImagesDirBuildItem(String prefix, Path localPath) {
+    private ImagesDirBuildItem(String prefix, String urlPrefix, Path localPath) {
         this.prefix = normalizePrefix(prefix);
+        this.urlPrefix = urlPrefix != null ? normalizePrefix(urlPrefix) : null;
         this.localPath = localPath;
     }
 
@@ -24,21 +26,41 @@ public final class ImagesDirBuildItem extends MultiBuildItem {
      * @param prefix the classpath prefix (e.g. "web/static/images")
      */
     public static ImagesDirBuildItem of(String prefix) {
-        return new ImagesDirBuildItem(prefix, null);
+        return new ImagesDirBuildItem(prefix, null, null);
     }
 
     /**
-     * Local filesystem directory with an explicit prefix for indexing.
+     * Classpath resource directory with a URL prefix for indexing.
+     * Files are scanned from {@code prefix} but indexed under {@code urlPrefix}.
      *
-     * @param prefix the prefix used for image lookups (e.g. "roq-public")
+     * @param prefix the classpath prefix where files are located
+     * @param urlPrefix the URL prefix for template lookups
+     */
+    public static ImagesDirBuildItem of(String prefix, String urlPrefix) {
+        return new ImagesDirBuildItem(prefix, urlPrefix, null);
+    }
+
+    /**
+     * Local filesystem directory with a URL prefix for indexing.
+     * Files are scanned from {@code localPath} but indexed under {@code urlPrefix}.
+     *
+     * @param urlPrefix the URL prefix for template lookups (e.g. "images")
      * @param localPath the filesystem path to the directory
      */
-    public static ImagesDirBuildItem of(String prefix, Path localPath) {
-        return new ImagesDirBuildItem(prefix, localPath);
+    public static ImagesDirBuildItem of(String urlPrefix, Path localPath) {
+        return new ImagesDirBuildItem(urlPrefix, urlPrefix, localPath);
     }
 
     public String prefix() {
         return prefix;
+    }
+
+    /**
+     * The URL prefix used when indexing files for template lookup.
+     * If null, files are indexed by their scopedPath (relative to the scope root).
+     */
+    public String urlPrefix() {
+        return urlPrefix;
     }
 
     public Path localPath() {
@@ -52,9 +74,9 @@ public final class ImagesDirBuildItem extends MultiBuildItem {
     @Override
     public String toString() {
         if (localPath != null) {
-            return "local:" + localPath + " (prefix=" + prefix + ")";
+            return "local:" + localPath + " (urlPrefix=" + urlPrefix + ")";
         }
-        return "classpath:" + prefix;
+        return "classpath:" + prefix + (urlPrefix != null ? " (urlPrefix=" + urlPrefix + ")" : "");
     }
 
     private static String normalizePrefix(String prefix) {

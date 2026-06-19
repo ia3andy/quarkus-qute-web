@@ -101,7 +101,7 @@ public class QuteImageProcessor {
             Path templatePath = resolveSourcePath(template);
             for (ImageTagSection tag : template.sectionNodes) {
                 collectImage(staticResourceProducer, converter, indexedFiles, images, tag,
-                        templatePath, template.id, targetDir.path);
+                        templatePath, template.id, targetDir.path, imageConfig.slugifyOutput());
             }
         }
 
@@ -147,7 +147,8 @@ public class QuteImageProcessor {
                             LOGGER.debugf("Glob match: %s with preset %s", file.scopedPath(), presetName);
                         }
                         processImage(staticResourceProducer, converter, images, null,
-                                declaredPath, presetName, preset, resolved, targetDist);
+                                declaredPath, presetName, preset, resolved, targetDist,
+                                imageConfig.slugifyOutput());
                     }
                 }
             }
@@ -176,7 +177,10 @@ public class QuteImageProcessor {
             String scope = scannerScope(dir);
             try {
                 for (ProjectFile file : scanner.query().scopeDir(scope).list()) {
-                    result.putIfAbsent(file.scopedPath(), file);
+                    String key = dir.urlPrefix() != null && !dir.urlPrefix().isEmpty()
+                            ? dir.urlPrefix() + "/" + file.scopedPath()
+                            : file.scopedPath();
+                    result.putIfAbsent(key, file);
                 }
             } catch (IOException e) {
                 throw new RuntimeException("Failed to scan image directory: " + dir, e);
@@ -187,7 +191,7 @@ public class QuteImageProcessor {
 
     private static void collectImage(BuildProducer<GeneratedStaticResourceBuildItem> staticResourceProducer,
             ImageConverter converter, Map<String, ProjectFile> indexedFiles, ImagesBuildItem images,
-            ImageTagSection tag, Path templatePath, String templateName, Path targetDist) {
+            ImageTagSection tag, Path templatePath, String templateName, Path targetDist, boolean slugifyOutput) {
 
         ResolvedSourceImage resolvedImage;
         if (tag.fileParam().startsWith("/")) {
@@ -196,21 +200,23 @@ public class QuteImageProcessor {
             resolvedImage = resolveRelative(images, templatePath.getParent(), tag.fileParam());
         } else {
             throw new RuntimeException(
-                    "Cannot refer to relative files from template when we do not know the template basePath: "
-                            + templateName);
+                    "Cannot resolve relative image path '%s' in template '%s'."
+                            .formatted(tag.fileParam(), templateName)
+                            + " Classpath templates (e.g. from themes) must use absolute image paths"
+                            + " like '/images/photo.jpg'.");
         }
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debugf(" Found image tag for image: %s", tag.fileParam());
         }
 
         processImage(staticResourceProducer, converter, images, tag.section().getOrigin().getTemplateId(),
-                tag.fileParam(), tag.presetName(), tag.presetConfig(), resolvedImage, targetDist);
+                tag.fileParam(), tag.presetName(), tag.presetConfig(), resolvedImage, targetDist, slugifyOutput);
     }
 
     static void processImage(BuildProducer<GeneratedStaticResourceBuildItem> staticResourceProducer,
             ImageConverter converter, ImagesBuildItem images, String templateId,
             String declaredPath, String presetName, PresetConfig preset,
-            ResolvedSourceImage resolvedImage, Path targetDist) {
+            ResolvedSourceImage resolvedImage, Path targetDist, boolean slugifyOutput) {
 
         ImagesBuilder.AddImageResult result = images.builder().addImage(resolvedImage);
         PresetConfig.Crop crop = preset.crop().orElse(null);
@@ -241,7 +247,7 @@ public class QuteImageProcessor {
                 int height = ImageSizing.computeTargetHeight(width, info.width(), info.height(),
                         crop != null ? crop.ratio() : null);
                 result.image().addGeneratedImage(
-                        new GeneratedImageOptions(width, height, format, crop, preset.quality()),
+                        new GeneratedImageOptions(width, height, format, crop, preset.quality()), slugifyOutput,
                         generatedImage -> {
                             Path outputPath = ImageUtils.generatedImagePath(targetDist, generatedImage);
                             ImageOptions options = new ImageOptions(width, height, ext,
@@ -289,16 +295,33 @@ public class QuteImageProcessor {
         return toResolvedImage(images, file, path);
     }
 
-    private static ResolvedSourceImage resolveRelative(ImagesBuildItem images, Path parentDir, String relativePath) {
+    private static Path findRelativeImage(Path parentDir, String relativePath) {
         Path resolved = parentDir.resolve(relativePath).normalize();
-        Path normalizedParent = parentDir.normalize();
-        if (!resolved.startsWith(normalizedParent)) {
-            throw new RuntimeException("Relative image path outside parent directory: '%s' (parent: '%s') "
-                    .formatted(resolved, normalizedParent));
+        if (!resolved.startsWith(parentDir)) {
+            return null;
         }
-        if (!Files.exists(resolved)) {
+        if (Files.isRegularFile(resolved)) {
+            return resolved;
+        }
+        Path inImagesDir = parentDir.resolve(ImageUtils.IMAGES_DIR).resolve(relativePath).normalize();
+        if (inImagesDir.startsWith(parentDir) && Files.isRegularFile(inImagesDir)) {
+            return inImagesDir;
+        }
+        String fileName = Path.of(relativePath).getFileName().toString();
+        Path prefixed = parentDir.resolve("_" + fileName).normalize();
+        if (prefixed.startsWith(parentDir) && Files.isRegularFile(prefixed)) {
+            return prefixed;
+        }
+        return null;
+    }
+
+    private static ResolvedSourceImage resolveRelative(ImagesBuildItem images, Path parentDir, String relativePath) {
+        Path normalizedParent = parentDir.normalize();
+        Path resolved = findRelativeImage(normalizedParent, relativePath);
+        if (resolved == null) {
             throw new RuntimeException("Image does not exist or is not a file: " + relativePath
-                    + " (looked up at " + parentDir + ")");
+                    + " (looked up at " + parentDir + ", also tried "
+                    + ImageUtils.IMAGES_DIR + "/" + relativePath + " and _" + relativePath + ")");
         }
         try {
             byte[] contents = Files.readAllBytes(resolved);

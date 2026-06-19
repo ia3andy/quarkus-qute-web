@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.Normalizer;
 import java.util.Locale;
 import java.util.Map;
 
@@ -11,6 +12,8 @@ import io.quarkiverse.qute.web.image.runtime.model.GeneratedImage;
 import io.quarkiverse.qute.web.image.runtime.model.ImageId;
 
 public interface ImageUtils {
+    String IMAGES_DIR = "_images";
+
     Map<String, String> FORMAT_EXTENSION = Map.of(
             "jpeg", "jpg",
             "tiff", "tif");
@@ -98,14 +101,33 @@ public interface ImageUtils {
     }
 
     static String computeOutputPath(String baseName, String imageDigest, Integer width, String settingsHash,
-            String ext) {
+            String ext, boolean slugify) {
         final String ref = width == null ? "original" : width + "-" + settingsHash;
-        String fileName = "%s-%s.%s".formatted(baseName, ref, ext);
+        String name = slugify ? slugify(baseName) : baseName;
+        String fileName = "%s-%s.%s".formatted(name, ref, ext);
         return Path.of("/static", "images/generated/", imageDigest, fileName).toString().replace('\\', '/');
     }
 
+    static String computeOutputPath(String baseName, String imageDigest, Integer width, String settingsHash,
+            String ext) {
+        return computeOutputPath(baseName, imageDigest, width, settingsHash, ext, false);
+    }
+
     static String computeOutputPath(ImageId id, Integer width, String settingsHash, String ext) {
-        return computeOutputPath(id.baseName(), id.digest(), width, settingsHash, ext);
+        return computeOutputPath(id.baseName(), id.digest(), width, settingsHash, ext, false);
+    }
+
+    static String computeOutputPath(ImageId id, Integer width, String settingsHash, String ext, boolean slugify) {
+        return computeOutputPath(id.baseName(), id.digest(), width, settingsHash, ext, slugify);
+    }
+
+    static String slugify(String input) {
+        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
+        String stripped = normalized.replaceAll("\\p{M}", "");
+        String lowered = stripped.toLowerCase(Locale.ROOT);
+        String cleaned = lowered.replaceAll("[^a-z0-9]+", "-");
+        cleaned = cleaned.replaceAll("^-|-$", "");
+        return cleaned.isEmpty() ? "image" : cleaned;
     }
 
     static String digest(byte[] contents) {

@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
 import io.quarkiverse.qute.web.image.runtime.model.ImageTag;
@@ -30,6 +31,9 @@ public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHe
 
     @Inject
     Images images;
+
+    @Inject
+    Instance<DynamicImageResolver> dynamicResolver;
 
     public ImageSectionHelperFactory() {
         images = null;
@@ -86,12 +90,16 @@ public class ImageSectionHelperFactory implements SectionHelperFactory<SectionHe
                 toEval.put("preset", presetExpr);
                 return context.evaluate(toEval)
                         .thenCompose(resolved -> {
-                            String src = (String) resolved.get("src");
+                            Object srcObj = resolved.get("src");
+                            String src = srcObj != null ? srcObj.toString() : null;
                             String preset = resolved.get("preset") != null
                                     ? resolved.get("preset").toString()
                                     : "default";
                             ImageTag imageTag = images.get(
                                     context.resolutionContext().getTemplate().getId(), src, preset);
+                            if (imageTag == null && dynamicResolver != null && dynamicResolver.isResolvable()) {
+                                imageTag = dynamicResolver.get().resolve(src, preset);
+                            }
                             Map<String, String> attrs = new HashMap<>();
                             for (Map.Entry<String, Object> entry : resolved.entrySet()) {
                                 if (!RESERVED_PARAMS.contains(entry.getKey()) && entry.getValue() != null) {
