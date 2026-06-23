@@ -14,6 +14,8 @@ import jakarta.inject.Singleton;
 
 import org.jboss.logging.Logger;
 
+import io.quarkiverse.tools.stringpaths.StringPaths;
+
 import io.quarkiverse.qute.web.image.converter.ImageConverter;
 import io.quarkiverse.qute.web.image.converter.ImageIOConverter;
 import io.quarkiverse.qute.web.image.converter.ImageInfo;
@@ -345,7 +347,7 @@ public class QuteImageProcessor {
 
     static String scannerScope(ImagesDirBuildItem dir) {
         if (dir.isLocal()) {
-            return dir.localPath().toString().replace('\\', '/');
+            return StringPaths.toUnixPath(dir.localPath().toString());
         }
         return dir.prefix();
     }
