@@ -28,7 +28,14 @@ Use the `{#image}` tag in your Qute templates:
 {#image src='/images/bar.png'/}
 ----
 
-By default, this generates a `<picture>` element with WebP and JPEG sources for responsive images:
+This generates responsive `<img>` tags with `srcset` for the configured widths:
+
+[source,html]
+----
+<img src="/static/images/generated/1b13/foo-640-a1b2.jpg" srcset="/static/images/generated/1b13/foo-640-a1b2.jpg 640w, ..." loading="lazy" sizes="auto" width="..." height="...">
+----
+
+When multiple output formats are configured (requires the <<vips,vips extension>>), a `<picture>` element is generated instead:
 
 [source,html]
 ----
@@ -37,8 +44,6 @@ By default, this generates a `<picture>` element with WebP and JPEG sources for 
   <img src="/static/images/generated/1b13/foo-640-a1b2.jpg" srcset="..." loading="lazy" sizes="auto" width="..." height="...">
 </picture>
 ----
-
-When only one output format is configured, a simple `<img>` tag with `srcset` is generated instead.
 
 === Image paths
 
@@ -51,7 +56,7 @@ or `/public` in the case of https://iamroq.com[Roq]).
 
 Presets control the output formats, widths, quality, and cropping. The `default` preset is used when no preset is specified:
 
-* **formats**: `webp, jpg` (output formats in preference order)
+* **formats**: `webp, jpg` (output formats in preference order; WebP requires the <<vips,vips extension>>)
 * **fallback-format**: `jpg` (format for the `<img>` `src`)
 * **widths**: `640, 1024, 1920, 2560` (responsive breakpoints in pixels)
 * **quality**: `100`
@@ -102,6 +107,24 @@ quarkus.qute.image.generate[0].glob=content/posts/**
 quarkus.qute.image.generate[0].presets=default
 ----
 
+
+[[vips]]
+== WebP/AVIF support (vips)
+
+The base image extension uses Java ImageIO for processing, which only supports JPEG and PNG output.
+For modern formats like WebP and AVIF, add the vips extension (requires https://www.libvips.org[libvips] installed on your system and Java 23+):
+
+[source,xml,subs=attributes+]
+----
+<dependency>
+    <groupId>io.quarkiverse.qute.web</groupId>
+    <artifactId>quarkus-qute-web-image-vips</artifactId>
+    <version>{project-version}</version>
+</dependency>
+----
+
+With vips installed, the default preset (`formats: webp, jpg`) will produce both WebP and JPEG variants.
+Without it, unsupported formats are skipped with a warning.
 
 [[extension-configuration-reference]]
 == Extension Configuration Reference
