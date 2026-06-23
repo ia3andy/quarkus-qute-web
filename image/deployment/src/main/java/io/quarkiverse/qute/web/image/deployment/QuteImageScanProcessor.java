@@ -115,14 +115,6 @@ public class QuteImageScanProcessor {
         };
     }
 
-    static String toUnixPath(Path path) {
-        return toUnixPath(path.toString());
-    }
-
-    static String toUnixPath(String path) {
-        return path.replaceAll("\\\\", "/");
-    }
-
     private static boolean isImageSection(TemplateNode templateNode) {
         return templateNode.isSection() && "image".equals(templateNode.asSection().getName());
     }
