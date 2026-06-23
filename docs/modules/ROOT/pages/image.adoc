@@ -112,7 +112,7 @@ quarkus.qute.image.generate[0].presets=default
 == WebP/AVIF support (vips)
 
 The base image extension uses Java ImageIO for processing, which only supports JPEG and PNG output.
-For modern formats like WebP and AVIF, add the vips extension (requires https://www.libvips.org[libvips] installed on your system and Java 23+):
+For modern formats like WebP and AVIF, add the vips extension:
 
 [source,xml,subs=attributes+]
 ----
@@ -123,7 +123,40 @@ For modern formats like WebP and AVIF, add the vips extension (requires https://
 </dependency>
 ----
 
-With vips installed, the default preset (`formats: webp, jpg`) will produce both WebP and JPEG variants.
+=== Requirements
+
+* **Java 23+** (uses the Foreign Function & Memory API)
+* **libvips 8.x** installed on your system (8.18+ recommended)
+* The JVM flag `--enable-native-access=ALL-UNNAMED` is required at runtime
+
+The extension auto-detects libvips via `pkg-config` at build time. You can also set the library paths manually with system properties:
+`-Dvipsffm.libpath.vips.override=/path/to/libvips.so`
+
+=== Installing libvips
+
+**macOS:**
+[source,bash]
+----
+brew install vips
+----
+
+**Fedora/RHEL:**
+[source,bash]
+----
+sudo dnf install vips-devel
+----
+
+**Ubuntu/Debian:**
+[source,bash]
+----
+sudo apt install libvips-dev
+----
+
+**Windows:**
+
+Download pre-built binaries from https://www.libvips.org/install.html[libvips.org] and add the `bin/` directory to your `PATH`.
+
+With vips installed, the default preset (`formats: webp, jpg`) will produce both WebP and JPEG variants, generating a `<picture>` element with multiple sources.
 Without it, unsupported formats are skipped with a warning.
 
 [[extension-configuration-reference]]
