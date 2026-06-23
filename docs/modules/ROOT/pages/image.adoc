@@ -20,50 +20,87 @@ To install the extension, add the following dependency to your project:
 
 == Usage
 
-For example, you can use the following Qute image tag:
+Use the `{#image}` tag in your Qute templates:
 
 [source,html]
 ----
-{#image 'foo.png'/}
+{#image src='foo.png'/}
 {#image src='/images/bar.png'/}
 ----
 
-Which will be expanded to the following `<img>` tag:
+By default, this generates a `<picture>` element with WebP and JPEG sources for responsive images:
 
 [source,html]
 ----
-<img src='/static/processed-images/1b139664/foo_original.png' srcset='/static/processed-images/1b139664/foo_640.png 640w,
-                           /static/processed-images/1b139664/foo_1024.png 1024w'/>
-<img src='/images/bar.png' srcset='/static/processed-images/a288338f/bar_640.png 640w,
-                           /static/processed-images/a288338f//bar_1024.png 1024w'/>
+<picture>
+  <source srcset="/static/images/generated/1b13/foo-640-a1b2.webp 640w, ..." type="image/webp">
+  <img src="/static/images/generated/1b13/foo-640-a1b2.jpg" srcset="..." loading="lazy" sizes="auto" width="..." height="...">
+</picture>
 ----
+
+When only one output format is configured, a simple `<img>` tag with `srcset` is generated instead.
 
 === Image paths
 
 Relative image paths will be resolved relative to the template that includes the image, the original file will also be served.
 
-Absolute image paths will be resolved from the resource folders of your applications, such as `src/main/resources/web/`
-or `/public` (in the case of https://iamroq.com[Roq]).
+Absolute image paths (starting with `/`) will be resolved from the image directories of your application (e.g., `src/main/resources/web/`
+or `/public` in the case of https://iamroq.com[Roq]).
+
+=== Presets
+
+Presets control the output formats, widths, quality, and cropping. The `default` preset is used when no preset is specified:
+
+* **formats**: `webp, jpg` (output formats in preference order)
+* **fallback-format**: `jpg` (format for the `<img>` `src`)
+* **widths**: `640, 1024, 1920, 2560` (responsive breakpoints in pixels)
+* **quality**: `100`
+
+You can define custom presets in `application.properties`:
+
+[source,properties]
+----
+quarkus.qute.image.presets.thumbnail.widths=320,640
+quarkus.qute.image.presets.thumbnail.formats=webp
+quarkus.qute.image.presets.thumbnail.quality=80
+quarkus.qute.image.presets.thumbnail.crop.ratio=1:1
+quarkus.qute.image.presets.thumbnail.crop.keep=center
+----
+
+Then use them in your templates:
+
+[source,html]
+----
+{#image src='photo.jpg' preset='thumbnail'/}
+----
 
 === Image variants
 
-At the moment, smaller image variants will be produced for the following sizes: 640, 1024, 1920, 2560, though
-this will be configurable in the future. Naturally, we only produce variants for sizes that are smaller than the
-original image.
-
-The original image, as you can see from the above example, is preserved in the resulting application.
+Smaller image variants are produced at build-time for the configured widths. Variants for sizes larger than the
+original image are skipped.
 
 The generated variants are placed in files according to this pattern:
 
 [source]
 ----
-/static/processed-images/{id}/{basename}_{size}.{ext}
+/static/images/generated/{digest}/{basename}-{width}-{hash}.{ext}
 ----
 
-id:: A short hash of the image content
+digest:: A short hash of the image content
 basename:: The file name of the image, without its extension
-size:: The width of the generated image
-ext:: The generated image extension (which at the moment will be the same as the source image extension)
+width:: The width of the generated image (or `original`)
+hash:: A short hash of the generation settings
+ext:: The output format extension (e.g., `webp`, `jpg`)
+
+=== Bulk image generation
+
+You can pre-process images matching a glob pattern at build time, even if they are not directly referenced in a template:
+
+[source,properties]
+----
+quarkus.qute.image.generate[0].glob=content/posts/**
+quarkus.qute.image.generate[0].presets=default
+----
 
 
 [[extension-configuration-reference]]
