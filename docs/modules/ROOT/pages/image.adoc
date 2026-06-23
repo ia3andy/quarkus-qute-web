@@ -127,7 +127,6 @@ For modern formats like WebP and AVIF, add the vips extension:
 
 * **Java 23+** (uses the Foreign Function & Memory API)
 * **libvips 8.x** installed on your system (8.18+ recommended)
-* The JVM flag `--enable-native-access=ALL-UNNAMED` is required at runtime
 
 The extension auto-detects libvips via `pkg-config` at build time. You can also set the library paths manually with system properties:
 `-Dvipsffm.libpath.vips.override=/path/to/libvips.so`
