@@ -156,8 +156,18 @@ sudo apt install libvips-dev
 
 Download pre-built binaries from https://www.libvips.org/install.html[libvips.org] and add the `bin/` directory to your `PATH`.
 
-With vips installed, the default preset (`formats: webp, jpg`) will produce both WebP and JPEG variants, generating a `<picture>` element with multiple sources.
-Without it, unsupported formats are skipped with a warning.
+=== Supported formats
+
+With vips, the following output formats are available:
+
+* **WebP** (`webp`), **AVIF** (`avif`), **JPEG XL** (`jxl`): modern formats with better compression
+* **JPEG** (`jpg`), **PNG** (`png`), **GIF** (`gif`), **TIFF** (`tif`): standard formats
+* **HEIC** (`heic`): Apple's high-efficiency format
+
+Without vips (ImageIO only), output is limited to **JPEG** and **PNG**.
+
+The default preset (`formats: webp, jpg`) produces both WebP and JPEG variants when vips is available, generating a `<picture>` element with multiple sources.
+Unsupported formats are skipped with a warning.
 
 [[extension-configuration-reference]]
 == Extension Configuration Reference
